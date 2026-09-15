@@ -7,61 +7,79 @@ import (
 	"homeessentials/backend/internal/model"
 )
 
-func validProductInputForDeliveryTest() ProductInput {
+func validRugProductInput() ProductInput {
 	return ProductInput{
-		Title:       "Test",
+		Title:       "Test rug",
 		Description: "Desc",
-		Category:    model.CategoryTote,
-		Colors:      []string{"black"},
-		ColorImages: []model.ColorImage{{Color: "black", ImageURL: "https://example.com/x.jpg"}},
-		Active:      true,
-		Sizes: []model.SizeVariant{
-			{
-				Code: model.SizeM,
-				Tiers: []model.QtyTier{
-					{MinQty: 1, MaxQty: intPtr(1), UnitPriceKobo: 100000, DeliveryDays: 14},
-					{MinQty: 2, UnitPriceKobo: 80000, DeliveryDays: 7},
-				},
-			},
+		Category:    model.CategoryRugs,
+		Variants:    []string{"beige"},
+		VariantImages: []model.VariantImage{
+			{Variant: "beige", ImageURL: "https://example.com/x.jpg"},
+		},
+		Active: true,
+		SizePricings: []model.SizePricing{
+			{Size: "2 x 5 ft", PiecePriceKobo: 500000, BundlePriceKobo: 4500000, PiecesPerBundle: 10},
 		},
 	}
 }
 
-func TestValidateProductInput_deliveryDaysRequired(t *testing.T) {
-	in := validProductInputForDeliveryTest()
-	in.Sizes[0].Tiers[0].DeliveryDays = 0
-
-	err := validateProductInput(in)
-	if err == nil {
-		t.Fatal("expected error for missing deliveryDays")
-	}
-	if !strings.Contains(err.Error(), "first price tier for size M") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if !strings.Contains(err.Error(), "delivery days of at least 1") {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestValidateProductInput_deliveryDaysValid(t *testing.T) {
-	err := validateProductInput(validProductInputForDeliveryTest())
+func TestValidateProductInput_rugOK(t *testing.T) {
+	_, err := normalizeAndValidateProductInput(validRugProductInput())
 	if err != nil {
-		t.Fatalf("expected valid input: %v", err)
+		t.Fatal(err)
 	}
 }
 
-func TestValidateProductInput_deliveryDaysPerTier(t *testing.T) {
-	in := validProductInputForDeliveryTest()
-	in.Sizes[0].Tiers[1].DeliveryDays = -1
+func TestValidateProductInput_cleaningOK(t *testing.T) {
+	in := ProductInput{
+		Title:       "Mop",
+		Description: "Desc",
+		Category:    model.CategoryCleaningEssentials,
+		Variants:    []string{"standard"},
+		VariantImages: []model.VariantImage{
+			{Variant: "standard", ImageURL: "https://example.com/mop.jpg"},
+		},
+		Active: true,
+		CleaningPricing: &model.CleaningPricing{
+			PiecePriceKobo: 100000,
+			DozenPriceKobo: 1000000,
+		},
+	}
+	got, err := normalizeAndValidateProductInput(in)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.CleaningPricing == nil || len(got.SizePricings) != 0 {
+		t.Fatalf("got %+v", got)
+	}
+}
 
-	err := validateProductInput(in)
-	if err == nil {
-		t.Fatal("expected error for negative deliveryDays")
+func TestValidateProductInput_requiresVariantImage(t *testing.T) {
+	in := validRugProductInput()
+	in.VariantImages = nil
+	_, err := normalizeAndValidateProductInput(in)
+	if err == nil || !strings.Contains(err.Error(), "image required") {
+		t.Fatalf("got %v", err)
 	}
-	if !strings.Contains(err.Error(), "second price tier for size M") {
-		t.Fatalf("expected tier index in error, got: %v", err)
+}
+
+func TestValidateProductInput_cleaningRejectsSizes(t *testing.T) {
+	in := ProductInput{
+		Title:       "Mop",
+		Description: "Desc",
+		Category:    model.CategoryCleaningEssentials,
+		Variants:    []string{"standard"},
+		VariantImages: []model.VariantImage{
+			{Variant: "standard", ImageURL: "https://example.com/mop.jpg"},
+		},
+		Active: true,
+		SizePricings: []model.SizePricing{
+			{Size: "x", PiecePriceKobo: 1, BundlePriceKobo: 1, PiecesPerBundle: 1},
+		},
+		CleaningPricing: &model.CleaningPricing{PiecePriceKobo: 1, DozenPriceKobo: 1},
 	}
-	if !strings.Contains(err.Error(), "delivery days of at least 1") {
-		t.Fatalf("expected delivery days message, got: %v", err)
+	_, err := normalizeAndValidateProductInput(in)
+	if err == nil || !strings.Contains(err.Error(), "must not have sizePricings") {
+		t.Fatalf("got %v", err)
 	}
 }

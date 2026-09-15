@@ -2,9 +2,9 @@
 
 Go (Gin) backend for **Home Essentials by Kamgol** — MongoDB, Paystack, SMTP, and Supabase Storage.
 
-## Phase 0 status
+## Phase 1 status
 
-Scaffold cloned from Fola Atelier with brand rename, gold tokens planned for FE, recreate/custom **routes removed**. Product/order domain still uses the temporary bag-style models until Phase 1.
+Product domain uses Home Essentials categories, variants + images, free-text size piece/bundle pricing, and cleaning piece/dozen pricing. Auth, uploads, and public catalogue are ready. Admin UI (Phase 2) still shows the old bag form until updated.
 
 ## Prerequisites
 

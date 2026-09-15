@@ -23,31 +23,32 @@ func NewProductHandler(ctrl *controller.ProductController) *ProductHandler {
 	return &ProductHandler{ctrl: ctrl}
 }
 
-type productSizeDTO struct {
-	Code  string       `json:"code"`
-	Tiers []qtyTierDTO `json:"tiers"`
-}
-
-type qtyTierDTO struct {
-	MinQty        int   `json:"minQty"`
-	MaxQty        *int  `json:"maxQty,omitempty"`
-	UnitPriceKobo int64 `json:"unitPriceKobo"`
-	DeliveryDays  int   `json:"deliveryDays"`
-}
-
-type colorImageDTO struct {
-	Color    string `json:"color"`
+type variantImageDTO struct {
+	Variant  string `json:"variant"`
 	ImageURL string `json:"imageUrl"`
 }
 
+type sizePricingDTO struct {
+	Size            string `json:"size"`
+	PiecePriceKobo  int64  `json:"piecePriceKobo"`
+	BundlePriceKobo int64  `json:"bundlePriceKobo"`
+	PiecesPerBundle int    `json:"piecesPerBundle"`
+}
+
+type cleaningPricingDTO struct {
+	PiecePriceKobo int64 `json:"piecePriceKobo"`
+	DozenPriceKobo int64 `json:"dozenPriceKobo"`
+}
+
 type productRequest struct {
-	Title       string           `json:"title"`
-	Description string           `json:"description"`
-	Category    string           `json:"category"`
-	Colors      []string         `json:"colors"`
-	ColorImages []colorImageDTO  `json:"colorImages"`
-	Active      bool             `json:"active"`
-	Sizes       []productSizeDTO `json:"sizes"`
+	Title           string               `json:"title"`
+	Description     string               `json:"description"`
+	Category        string               `json:"category"`
+	Variants        []string             `json:"variants"`
+	VariantImages   []variantImageDTO    `json:"variantImages"`
+	SizePricings    []sizePricingDTO     `json:"sizePricings"`
+	CleaningPricing *cleaningPricingDTO  `json:"cleaningPricing"`
+	Active          bool                 `json:"active"`
 }
 
 func (h *ProductHandler) Create(c *gin.Context) {
@@ -225,40 +226,41 @@ func requestToInput(req productRequest) (controller.ProductInput, error) {
 		return controller.ProductInput{}, err
 	}
 
-	sizes := make([]model.SizeVariant, 0, len(req.Sizes))
-	for _, s := range req.Sizes {
-		code, err := model.ParseSizeCode(s.Code)
-		if err != nil {
-			return controller.ProductInput{}, err
-		}
-		tiers := make([]model.QtyTier, 0, len(s.Tiers))
-		for _, t := range s.Tiers {
-			tiers = append(tiers, model.QtyTier{
-				MinQty:        t.MinQty,
-				MaxQty:        t.MaxQty,
-				UnitPriceKobo: t.UnitPriceKobo,
-				DeliveryDays:  t.DeliveryDays,
-			})
-		}
-		sizes = append(sizes, model.SizeVariant{Code: code, Tiers: tiers})
-	}
-
-	colorImages := make([]model.ColorImage, 0, len(req.ColorImages))
-	for _, ci := range req.ColorImages {
-		colorImages = append(colorImages, model.ColorImage{
-			Color:    ci.Color,
-			ImageURL: ci.ImageURL,
+	variantImages := make([]model.VariantImage, 0, len(req.VariantImages))
+	for _, vi := range req.VariantImages {
+		variantImages = append(variantImages, model.VariantImage{
+			Variant:  vi.Variant,
+			ImageURL: vi.ImageURL,
 		})
 	}
 
+	sizePricings := make([]model.SizePricing, 0, len(req.SizePricings))
+	for _, sp := range req.SizePricings {
+		sizePricings = append(sizePricings, model.SizePricing{
+			Size:            sp.Size,
+			PiecePriceKobo:  sp.PiecePriceKobo,
+			BundlePriceKobo: sp.BundlePriceKobo,
+			PiecesPerBundle: sp.PiecesPerBundle,
+		})
+	}
+
+	var cleaning *model.CleaningPricing
+	if req.CleaningPricing != nil {
+		cleaning = &model.CleaningPricing{
+			PiecePriceKobo: req.CleaningPricing.PiecePriceKobo,
+			DozenPriceKobo: req.CleaningPricing.DozenPriceKobo,
+		}
+	}
+
 	return controller.ProductInput{
-		Title:       req.Title,
-		Description: req.Description,
-		Category:    cat,
-		Colors:      req.Colors,
-		ColorImages: colorImages,
-		Active:      req.Active,
-		Sizes:       sizes,
+		Title:           req.Title,
+		Description:     req.Description,
+		Category:        cat,
+		Variants:        req.Variants,
+		VariantImages:   variantImages,
+		SizePricings:    sizePricings,
+		CleaningPricing: cleaning,
+		Active:          req.Active,
 	}, nil
 }
 
@@ -281,18 +283,14 @@ func writeProductError(c *gin.Context, err error) {
 		return
 	}
 
-	if errors.Is(err, pricing.ErrOverlappingTier) ||
-		errors.Is(err, pricing.ErrGapInTiers) ||
-		errors.Is(err, pricing.ErrInvalidTiers) ||
-		errors.Is(err, pricing.ErrNoTierForQty) {
+	if errors.Is(err, pricing.ErrInvalidPricing) || errors.Is(err, pricing.ErrNoPriceForUnit) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
 	if msg := err.Error(); msg == "title is required" ||
 		msg == "invalid category" ||
-		msg == "at least one color is required" ||
-		msg == "at least one size is required" {
+		msg == "at least one variant is required" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
 		return
 	}

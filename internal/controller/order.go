@@ -27,8 +27,9 @@ func IsOrderDeleteNotAbandoned(err error) bool {
 
 type OrderLineInput struct {
 	ProductID primitive.ObjectID
-	Size      model.SizeCode
-	Color     string
+	Variant   string
+	Size      string
+	Unit      model.OrderUnit
 	Quantity  int
 }
 
@@ -100,11 +101,11 @@ func (c *OrderController) Create(ctx context.Context, in CreateOrderInput) (*mod
 		if line.Quantity < 1 {
 			return nil, fmt.Errorf("quantity must be at least 1")
 		}
-		if !line.Size.Valid() {
-			return nil, fmt.Errorf("invalid size %q", line.Size)
+		if !line.Unit.Valid() {
+			return nil, fmt.Errorf("invalid unit %q", line.Unit)
 		}
-		if strings.TrimSpace(line.Color) == "" {
-			return nil, fmt.Errorf("color is required on each line")
+		if strings.TrimSpace(line.Variant) == "" {
+			return nil, fmt.Errorf("variant is required on each line")
 		}
 		ids = append(ids, line.ProductID)
 	}
@@ -149,32 +150,41 @@ func buildOrderItems(productsByID map[primitive.ObjectID]model.Product, lines []
 			return nil, 0, fmt.Errorf("line %d: product is not available", i+1)
 		}
 
-		color := strings.TrimSpace(line.Color)
-		if !productHasColor(p.Colors, color) {
-			return nil, 0, fmt.Errorf("line %d: color %q is not available for this product", i+1, color)
+		variant := strings.TrimSpace(line.Variant)
+		if !p.HasVariant(variant) {
+			return nil, 0, fmt.Errorf("line %d: variant %q is not available for this product", i+1, variant)
 		}
 
-		tiers, err := tiersForSize(p.Sizes, line.Size)
+		size := strings.TrimSpace(line.Size)
+		if p.Category.IsCleaning() {
+			if size != "" {
+				return nil, 0, fmt.Errorf("line %d: size is not allowed for cleaning essentials", i+1)
+			}
+		} else if size == "" {
+			return nil, 0, fmt.Errorf("line %d: size is required", i+1)
+		}
+
+		priced, err := pricing.ResolveLinePrice(p, size, line.Unit)
 		if err != nil {
 			return nil, 0, fmt.Errorf("line %d: %w", i+1, err)
 		}
 
-		unit, err := pricing.UnitPriceForQty(tiers, line.Quantity)
-		if err != nil {
-			return nil, 0, fmt.Errorf("line %d: %w", i+1, err)
-		}
-
-		lineTotal := unit * int64(line.Quantity)
-		items = append(items, model.OrderItem{
+		lineTotal := priced.UnitPriceKobo * int64(line.Quantity)
+		item := model.OrderItem{
 			ProductID:     p.ID,
 			ProductTitle:  p.Title,
-			Size:          line.Size,
-			Color:         color,
-			ImageURL:      p.ImageURLForColor(color),
+			Variant:       variant,
+			Size:          size,
+			Unit:          line.Unit,
+			ImageURL:      p.ImageURLForVariant(variant),
 			Quantity:      line.Quantity,
-			UnitPriceKobo: unit,
+			UnitPriceKobo: priced.UnitPriceKobo,
 			LineTotalKobo: lineTotal,
-		})
+		}
+		if line.Unit == model.OrderUnitBundle {
+			item.PiecesPerBundle = priced.PiecesPerBundle
+		}
+		items = append(items, item)
 		total += lineTotal
 	}
 
@@ -332,24 +342,6 @@ func normalizeCustomer(c CustomerInput) model.CustomerInfo {
 	}
 }
 
-func productHasColor(colors []string, want string) bool {
-	for _, c := range colors {
-		if strings.EqualFold(strings.TrimSpace(c), want) {
-			return true
-		}
-	}
-	return false
-}
-
-func tiersForSize(sizes []model.SizeVariant, code model.SizeCode) ([]model.QtyTier, error) {
-	for _, sv := range sizes {
-		if sv.Code == code {
-			return sv.Tiers, nil
-		}
-	}
-	return nil, fmt.Errorf("size %q is not available for this product", code)
-}
-
 func newPaystackReference() string {
-	return "fol_" + strings.ReplaceAll(uuid.NewString(), "-", "")
+	return "kam_" + strings.ReplaceAll(uuid.NewString(), "-", "")
 }

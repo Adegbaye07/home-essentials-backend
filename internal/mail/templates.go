@@ -22,7 +22,8 @@ type ShellData struct {
 type LineItemRow struct {
 	ProductTitle string
 	Size         string
-	Color        string
+	Variant      string
+	Unit         string
 	Quantity     int
 	UnitPrice    string
 	LineTotal    string

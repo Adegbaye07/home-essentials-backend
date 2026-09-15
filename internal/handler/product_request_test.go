@@ -5,77 +5,60 @@ import (
 	"testing"
 )
 
-func TestRequestToInput_mapsDeliveryDays(t *testing.T) {
-	max1 := 1
+func TestRequestToInput_mapsRugPricing(t *testing.T) {
 	in, err := requestToInput(productRequest{
-		Title:       "T",
-		Description: "D",
-		Category:    "tote",
-		Colors:      []string{"black"},
-		ColorImages: []colorImageDTO{{Color: "black", ImageURL: "https://example.com/x.jpg"}},
-		Active:      true,
-		Sizes: []productSizeDTO{
-			{
-				Code: "M",
-				Tiers: []qtyTierDTO{
-					{MinQty: 1, MaxQty: &max1, UnitPriceKobo: 100000, DeliveryDays: 21},
-					{MinQty: 2, UnitPriceKobo: 90000, DeliveryDays: 14},
-				},
-			},
+		Title:       "Runner rug",
+		Description: "Soft runner",
+		Category:    "rugs",
+		Variants:    []string{"beige"},
+		VariantImages: []variantImageDTO{
+			{Variant: "beige", ImageURL: "https://example.com/beige.jpg"},
+		},
+		Active: true,
+		SizePricings: []sizePricingDTO{
+			{Size: "2 x 5 ft", PiecePriceKobo: 500000, BundlePriceKobo: 4500000, PiecesPerBundle: 10},
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(in.Sizes) != 1 || len(in.Sizes[0].Tiers) != 2 {
-		t.Fatalf("sizes: %+v", in.Sizes)
+	if len(in.SizePricings) != 1 {
+		t.Fatalf("sizePricings: %+v", in.SizePricings)
 	}
-	if in.Sizes[0].Tiers[0].DeliveryDays != 21 || in.Sizes[0].Tiers[1].DeliveryDays != 14 {
-		t.Fatalf("delivery days not mapped: %+v", in.Sizes[0].Tiers)
+	if in.SizePricings[0].PiecesPerBundle != 10 {
+		t.Fatalf("piecesPerBundle: %+v", in.SizePricings[0])
+	}
+	if in.CleaningPricing != nil {
+		t.Fatal("expected nil cleaningPricing")
 	}
 }
 
-func TestRequestToInput_zeroDeliveryDaysPreservedForValidation(t *testing.T) {
+func TestRequestToInput_mapsCleaningPricing(t *testing.T) {
 	in, err := requestToInput(productRequest{
-		Title:       "T",
-		Description: "D",
-		Category:    "tote",
-		Colors:      []string{"black"},
-		ColorImages: []colorImageDTO{{Color: "black", ImageURL: "https://example.com/x.jpg"}},
-		Active:      true,
-		Sizes: []productSizeDTO{
-			{
-				Code: "S",
-				Tiers: []qtyTierDTO{
-					{MinQty: 1, UnitPriceKobo: 100000, DeliveryDays: 0},
-				},
-			},
+		Title:       "Mop",
+		Description: "Floor mop",
+		Category:    "cleaning_essentials",
+		Variants:    []string{"standard"},
+		VariantImages: []variantImageDTO{
+			{Variant: "standard", ImageURL: "https://example.com/mop.jpg"},
+		},
+		Active: true,
+		CleaningPricing: &cleaningPricingDTO{
+			PiecePriceKobo: 200000,
+			DozenPriceKobo: 2000000,
 		},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if in.Sizes[0].Tiers[0].DeliveryDays != 0 {
-		t.Fatal("expected zero delivery days from JSON omit/default")
+	if in.CleaningPricing == nil || in.CleaningPricing.DozenPriceKobo != 2000000 {
+		t.Fatalf("cleaningPricing: %+v", in.CleaningPricing)
 	}
 }
 
-func TestRequestToInput_invalidSizeStillFails(t *testing.T) {
-	_, err := requestToInput(productRequest{
-		Category: "tote",
-		Sizes: []productSizeDTO{
-			{Code: "XS", Tiers: []qtyTierDTO{{MinQty: 1, UnitPriceKobo: 100, DeliveryDays: 7}}},
-		},
-	})
-	if err == nil || !strings.Contains(err.Error(), "invalid size") {
-		t.Fatalf("expected invalid size error, got %v", err)
-	}
-}
-
-// Ensure category parse still works (regression).
-func TestRequestToInput_category(t *testing.T) {
-	_, err := requestToInput(productRequest{Category: "not-a-cat"})
-	if err == nil {
-		t.Fatal("expected category error")
+func TestRequestToInput_invalidCategory(t *testing.T) {
+	_, err := requestToInput(productRequest{Category: "tote"})
+	if err == nil || !strings.Contains(err.Error(), "invalid category") {
+		t.Fatalf("expected category error, got %v", err)
 	}
 }

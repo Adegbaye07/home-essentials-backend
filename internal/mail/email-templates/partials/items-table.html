@@ -3,10 +3,11 @@
   <thead>
     <tr>
       <th align="left" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Product</th>
+      <th align="left" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Variant</th>
       <th align="left" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Size</th>
-      <th align="left" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Color</th>
+      <th align="left" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Unit</th>
       <th align="right" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Qty</th>
-      <th align="right" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Unit</th>
+      <th align="right" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Price</th>
       <th align="right" style="padding: 10px 8px; border-bottom: 2px solid #AE7820; color: #1c1917; font-weight: 600;">Line</th>
     </tr>
   </thead>
@@ -14,8 +15,9 @@
     {{range .Items}}
     <tr>
       <td style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #1c1917; vertical-align: top;">{{.ProductTitle}}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #44403c; vertical-align: top;">{{.Variant}}</td>
       <td style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #44403c; vertical-align: top;">{{.Size}}</td>
-      <td style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #44403c; vertical-align: top;">{{.Color}}</td>
+      <td style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #44403c; vertical-align: top;">{{.Unit}}</td>
       <td align="right" style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #44403c; vertical-align: top;">{{.Quantity}}</td>
       <td align="right" style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #44403c; vertical-align: top;">{{.UnitPrice}}</td>
       <td align="right" style="padding: 10px 8px; border-bottom: 1px solid #e8e4df; color: #1c1917; font-weight: 600; vertical-align: top;">{{.LineTotal}}</td>

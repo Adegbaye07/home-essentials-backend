@@ -27,8 +27,9 @@ func NewOrderHandler(ctrl *controller.OrderController) *OrderHandler {
 
 type orderLineDTO struct {
 	ProductID string `json:"productId"`
+	Variant   string `json:"variant"`
 	Size      string `json:"size"`
-	Color     string `json:"color"`
+	Unit      string `json:"unit"`
 	Quantity  int    `json:"quantity"`
 }
 
@@ -113,9 +114,9 @@ func customOrderFormToInput(c *gin.Context) (controller.CreateCustomOrderInput, 
 		return controller.CreateCustomOrderInput{}, errors.New("offeredTotalKobo must be a number")
 	}
 
-	sizes, err := parseSizeCodesCSV(c.PostForm("sizes"))
-	if err != nil {
-		return controller.CreateCustomOrderInput{}, err
+	sizes := parseCSVTokens(c.PostForm("sizes"))
+	if len(sizes) == 0 {
+		return controller.CreateCustomOrderInput{}, errors.New("at least one size is required")
 	}
 	colors := parseCSVTokens(c.PostForm("colors"))
 
@@ -135,22 +136,6 @@ func customOrderFormToInput(c *gin.Context) (controller.CreateCustomOrderInput, 
 			OfferedTotalKobo: offered,
 		},
 	}, nil
-}
-
-func parseSizeCodesCSV(raw string) ([]model.SizeCode, error) {
-	parts := parseCSVTokens(raw)
-	if len(parts) == 0 {
-		return nil, errors.New("at least one size is required")
-	}
-	out := make([]model.SizeCode, 0, len(parts))
-	for _, p := range parts {
-		code, err := model.ParseSizeCode(p)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, code)
-	}
-	return out, nil
 }
 
 func parseCSVTokens(raw string) []string {
@@ -360,14 +345,15 @@ func createRequestToInput(req createOrderRequest) (controller.CreateOrderInput, 
 		if err != nil {
 			return controller.CreateOrderInput{}, errors.New("invalid productId on line " + strconv.Itoa(i+1))
 		}
-		size, err := model.ParseSizeCode(line.Size)
+		unit, err := model.ParseOrderUnit(line.Unit)
 		if err != nil {
 			return controller.CreateOrderInput{}, err
 		}
 		lines = append(lines, controller.OrderLineInput{
 			ProductID: pid,
-			Size:      size,
-			Color:     line.Color,
+			Variant:   line.Variant,
+			Size:      line.Size,
+			Unit:      unit,
 			Quantity:  line.Quantity,
 		})
 	}
@@ -409,7 +395,7 @@ func writeOrderError(c *gin.Context, err error) {
 		return
 	}
 
-	if errors.Is(err, pricing.ErrNoTierForQty) {
+	if errors.Is(err, pricing.ErrNoPriceForUnit) || errors.Is(err, pricing.ErrInvalidPricing) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}

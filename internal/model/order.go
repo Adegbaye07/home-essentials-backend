@@ -204,26 +204,28 @@ func (o *Order) MayAbandon() bool {
 	return o.OrderType.Normalized() == OrderTypeShop && o.Status.Normalized() == OrderStatusPendingPayment
 }
 
-// CustomRequest holds bespoke recreate-order details (orderType=custom).
+// CustomRequest holds bespoke recreate-order details (orderType=custom). Legacy; routes removed.
 type CustomRequest struct {
-	Title            string     `bson:"title" json:"title"`
-	Description      string     `bson:"description" json:"description"`
-	Sizes            []SizeCode `bson:"sizes" json:"sizes"`
-	Colors           []string   `bson:"colors" json:"colors"`
-	Quantity         int        `bson:"quantity" json:"quantity"`
-	OfferedTotalKobo int64      `bson:"offeredTotalKobo" json:"offeredTotalKobo"`
-	SampleImageURL   string     `bson:"sampleImageUrl,omitempty" json:"sampleImageUrl,omitempty"`
+	Title            string   `bson:"title" json:"title"`
+	Description      string   `bson:"description" json:"description"`
+	Sizes            []string `bson:"sizes" json:"sizes"`
+	Colors           []string `bson:"colors" json:"colors"`
+	Quantity         int      `bson:"quantity" json:"quantity"`
+	OfferedTotalKobo int64    `bson:"offeredTotalKobo" json:"offeredTotalKobo"`
+	SampleImageURL   string   `bson:"sampleImageUrl,omitempty" json:"sampleImageUrl,omitempty"`
 }
 
 type OrderItem struct {
-	ProductID     primitive.ObjectID `bson:"productId" json:"productId"`
-	ProductTitle  string             `bson:"productTitle" json:"productTitle"`
-	Size          SizeCode           `bson:"size" json:"size"`
-	Color         string             `bson:"color" json:"color"`
-	ImageURL      string             `bson:"imageUrl,omitempty" json:"imageUrl,omitempty"`
-	Quantity      int                `bson:"quantity" json:"quantity"`
-	UnitPriceKobo int64              `bson:"unitPriceKobo" json:"unitPriceKobo"`
-	LineTotalKobo int64              `bson:"lineTotalKobo" json:"lineTotalKobo"`
+	ProductID       primitive.ObjectID `bson:"productId" json:"productId"`
+	ProductTitle    string             `bson:"productTitle" json:"productTitle"`
+	Variant         string             `bson:"variant" json:"variant"`
+	Size            string             `bson:"size,omitempty" json:"size,omitempty"`
+	Unit            OrderUnit          `bson:"unit" json:"unit"`
+	PiecesPerBundle int                `bson:"piecesPerBundle,omitempty" json:"piecesPerBundle,omitempty"`
+	ImageURL        string             `bson:"imageUrl,omitempty" json:"imageUrl,omitempty"`
+	Quantity        int                `bson:"quantity" json:"quantity"`
+	UnitPriceKobo   int64              `bson:"unitPriceKobo" json:"unitPriceKobo"`
+	LineTotalKobo   int64              `bson:"lineTotalKobo" json:"lineTotalKobo"`
 }
 
 type CustomerInfo struct {

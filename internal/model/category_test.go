@@ -2,59 +2,40 @@ package model
 
 import "testing"
 
-func TestParseCategory_newSlug(t *testing.T) {
-	got, err := ParseCategory("clutch")
-	if err != nil {
-		t.Fatal(err)
+func TestParseCategory_homeEssentials(t *testing.T) {
+	cases := []struct {
+		in   string
+		want Category
+	}{
+		{"foot_mats", CategoryFootMats},
+		{"door_mats", CategoryDoorMats},
+		{"center_mats", CategoryCenterMats},
+		{"rugs", CategoryRugs},
+		{"cleaning_essentials", CategoryCleaningEssentials},
 	}
-	if got != CategoryClutch {
-		t.Fatalf("got %q, want %q", got, CategoryClutch)
-	}
-}
-
-func TestParseCategory_legacyMens(t *testing.T) {
-	got, err := ParseCategory("mens")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != CategoryMens {
-		t.Fatalf("got %q, want %q", got, CategoryMens)
-	}
-}
-
-func TestParseCategory_handBag(t *testing.T) {
-	got, err := ParseCategory("hand_bag")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != CategoryHandBag {
-		t.Fatalf("got %q, want %q", got, CategoryHandBag)
-	}
-}
-
-func TestParseCategory_flapBag(t *testing.T) {
-	got, err := ParseCategory("flap_bag")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != CategoryFlapBag {
-		t.Fatalf("got %q, want %q", got, CategoryFlapBag)
-	}
-}
-
-func TestParseCategory_existingTote(t *testing.T) {
-	got, err := ParseCategory("tote")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got != CategoryTote {
-		t.Fatalf("got %q, want %q", got, CategoryTote)
+	for _, tc := range cases {
+		got, err := ParseCategory(tc.in)
+		if err != nil {
+			t.Fatalf("%s: %v", tc.in, err)
+		}
+		if got != tc.want {
+			t.Fatalf("%s: got %q want %q", tc.in, got, tc.want)
+		}
 	}
 }
 
 func TestParseCategory_invalid(t *testing.T) {
-	_, err := ParseCategory("not-a-cat")
+	_, err := ParseCategory("tote")
 	if err == nil {
-		t.Fatal("expected error")
+		t.Fatal("expected error for legacy bag category")
+	}
+}
+
+func TestCategory_IsCleaning(t *testing.T) {
+	if !CategoryCleaningEssentials.IsCleaning() {
+		t.Fatal("expected cleaning")
+	}
+	if CategoryRugs.IsCleaning() {
+		t.Fatal("rugs should not be cleaning")
 	}
 }

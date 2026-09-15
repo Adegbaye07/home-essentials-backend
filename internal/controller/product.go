@@ -22,13 +22,14 @@ type ProductImageDeleter interface {
 }
 
 type ProductInput struct {
-	Title       string
-	Description string
-	Category    model.Category
-	Colors      []string
-	ColorImages []model.ColorImage
-	Active      bool
-	Sizes       []model.SizeVariant
+	Title           string
+	Description     string
+	Category        model.Category
+	Variants        []string
+	VariantImages   []model.VariantImage
+	SizePricings    []model.SizePricing
+	CleaningPricing *model.CleaningPricing
+	Active          bool
 }
 
 var (
@@ -51,18 +52,20 @@ func NewProductController(repo *repository.ProductRepository, orders *repository
 }
 
 func (c *ProductController) Create(ctx context.Context, in ProductInput) (*model.Product, error) {
-	if err := validateProductInput(in); err != nil {
+	normalized, err := normalizeAndValidateProductInput(in)
+	if err != nil {
 		return nil, err
 	}
 
 	p := &model.Product{
-		Title:       strings.TrimSpace(in.Title),
-		Description: strings.TrimSpace(in.Description),
-		Category:    in.Category,
-		Colors:      normalizeStrings(in.Colors),
-		ColorImages: normalizeColorImages(in.ColorImages),
-		Active:      in.Active,
-		Sizes:       in.Sizes,
+		Title:           normalized.Title,
+		Description:     normalized.Description,
+		Category:        normalized.Category,
+		Variants:        normalized.Variants,
+		VariantImages:   normalized.VariantImages,
+		SizePricings:    normalized.SizePricings,
+		CleaningPricing: normalized.CleaningPricing,
+		Active:          normalized.Active,
 	}
 
 	if err := c.repo.Create(ctx, p); err != nil {
@@ -72,7 +75,8 @@ func (c *ProductController) Create(ctx context.Context, in ProductInput) (*model
 }
 
 func (c *ProductController) Update(ctx context.Context, id primitive.ObjectID, in ProductInput) (*model.Product, error) {
-	if err := validateProductInput(in); err != nil {
+	normalized, err := normalizeAndValidateProductInput(in)
+	if err != nil {
 		return nil, err
 	}
 
@@ -81,21 +85,22 @@ func (c *ProductController) Update(ctx context.Context, id primitive.ObjectID, i
 		return nil, err
 	}
 
-	previousURLs := productColorImageURLs(*existing)
+	previousURLs := productVariantImageURLs(*existing)
 
-	existing.Title = strings.TrimSpace(in.Title)
-	existing.Description = strings.TrimSpace(in.Description)
-	existing.Category = in.Category
-	existing.Colors = normalizeStrings(in.Colors)
-	existing.ColorImages = normalizeColorImages(in.ColorImages)
-	existing.Active = in.Active
-	existing.Sizes = in.Sizes
+	existing.Title = normalized.Title
+	existing.Description = normalized.Description
+	existing.Category = normalized.Category
+	existing.Variants = normalized.Variants
+	existing.VariantImages = normalized.VariantImages
+	existing.SizePricings = normalized.SizePricings
+	existing.CleaningPricing = normalized.CleaningPricing
+	existing.Active = normalized.Active
 
 	if err := c.repo.Update(ctx, existing); err != nil {
 		return nil, fmt.Errorf("update product: %w", err)
 	}
 
-	c.deleteOrphanedProductImages(previousURLs, productColorImageURLs(*existing))
+	c.deleteOrphanedProductImages(previousURLs, productVariantImageURLs(*existing))
 
 	return existing, nil
 }
@@ -131,7 +136,7 @@ func (c *ProductController) Delete(ctx context.Context, id primitive.ObjectID) e
 		return err
 	}
 
-	imageURLs := productColorImageURLs(*existing)
+	imageURLs := productVariantImageURLs(*existing)
 	if err := c.repo.Delete(ctx, id); err != nil {
 		return err
 	}
@@ -140,35 +145,57 @@ func (c *ProductController) Delete(ctx context.Context, id primitive.ObjectID) e
 	return nil
 }
 
-func validateProductInput(in ProductInput) error {
-	if strings.TrimSpace(in.Title) == "" {
-		return fmt.Errorf("title is required")
-	}
-	if !in.Category.Valid() {
-		return fmt.Errorf("invalid category")
-	}
-	if len(in.Colors) == 0 {
-		return fmt.Errorf("at least one color is required")
-	}
-	if err := validateColorImages(normalizeStrings(in.Colors), in.ColorImages); err != nil {
-		return err
-	}
-	if err := pricing.ValidateSizeVariants(in.Sizes); err != nil {
-		return err
-	}
-	if err := validateTierDeliveryDays(in.Sizes); err != nil {
-		return err
-	}
-	return nil
+type normalizedProductInput struct {
+	Title           string
+	Description     string
+	Category        model.Category
+	Variants        []string
+	VariantImages   []model.VariantImage
+	SizePricings    []model.SizePricing
+	CleaningPricing *model.CleaningPricing
+	Active          bool
 }
 
-func validateTierDeliveryDays(sizes []model.SizeVariant) error {
-	for _, sv := range sizes {
-		if err := pricing.ValidateTierDeliveryDays(sv.Code, sv.Tiers); err != nil {
-			return err
-		}
+func normalizeAndValidateProductInput(in ProductInput) (normalizedProductInput, error) {
+	out := normalizedProductInput{
+		Title:       strings.TrimSpace(in.Title),
+		Description: strings.TrimSpace(in.Description),
+		Category:    in.Category,
+		Active:      in.Active,
 	}
-	return nil
+	if out.Title == "" {
+		return out, fmt.Errorf("title is required")
+	}
+	if !out.Category.Valid() {
+		return out, fmt.Errorf("invalid category")
+	}
+
+	out.Variants = normalizeStrings(in.Variants)
+	if len(out.Variants) == 0 {
+		return out, fmt.Errorf("at least one variant is required")
+	}
+	out.VariantImages = normalizeVariantImages(in.VariantImages)
+	if err := validateVariantImages(out.Variants, out.VariantImages); err != nil {
+		return out, err
+	}
+
+	out.SizePricings = normalizeSizePricings(in.SizePricings)
+	if in.CleaningPricing != nil {
+		cp := *in.CleaningPricing
+		out.CleaningPricing = &cp
+	}
+
+	if err := pricing.ValidateProductPricing(out.Category, out.SizePricings, out.CleaningPricing); err != nil {
+		return out, err
+	}
+
+	if out.Category.IsCleaning() {
+		out.SizePricings = nil
+	} else {
+		out.CleaningPricing = nil
+	}
+
+	return out, nil
 }
 
 func normalizeStrings(items []string) []string {
@@ -185,39 +212,63 @@ func normalizeStrings(items []string) []string {
 	return out
 }
 
-func normalizeColorImages(items []model.ColorImage) []model.ColorImage {
-	out := make([]model.ColorImage, 0, len(items))
-	for _, ci := range items {
-		color := strings.TrimSpace(ci.Color)
-		url := strings.TrimSpace(ci.ImageURL)
-		if color == "" || url == "" {
+func normalizeVariantImages(items []model.VariantImage) []model.VariantImage {
+	out := make([]model.VariantImage, 0, len(items))
+	for _, vi := range items {
+		variant := strings.TrimSpace(vi.Variant)
+		url := strings.TrimSpace(vi.ImageURL)
+		if variant == "" || url == "" {
 			continue
 		}
-		out = append(out, model.ColorImage{Color: color, ImageURL: url})
+		out = append(out, model.VariantImage{Variant: variant, ImageURL: url})
 	}
 	if out == nil {
-		return []model.ColorImage{}
+		return []model.VariantImage{}
 	}
 	return out
 }
 
-func validateColorImages(colors []string, images []model.ColorImage) error {
-	byColor := make(map[string]string, len(images))
-	for _, ci := range normalizeColorImages(images) {
-		if _, dup := byColor[ci.Color]; dup {
-			return fmt.Errorf("duplicate image for color %q", ci.Color)
+func normalizeSizePricings(items []model.SizePricing) []model.SizePricing {
+	out := make([]model.SizePricing, 0, len(items))
+	for _, sp := range items {
+		size := strings.TrimSpace(sp.Size)
+		if size == "" {
+			continue
 		}
-		byColor[ci.Color] = ci.ImageURL
+		out = append(out, model.SizePricing{
+			Size:            size,
+			PiecePriceKobo:  sp.PiecePriceKobo,
+			BundlePriceKobo: sp.BundlePriceKobo,
+			PiecesPerBundle: sp.PiecesPerBundle,
+		})
 	}
-	for _, c := range colors {
-		if byColor[c] == "" {
-			return fmt.Errorf("image required for color %q", c)
+	if out == nil {
+		return []model.SizePricing{}
+	}
+	return out
+}
+
+func validateVariantImages(variants []string, images []model.VariantImage) error {
+	byVariant := make(map[string]string, len(images))
+	for _, vi := range images {
+		key := strings.ToLower(vi.Variant)
+		if _, dup := byVariant[key]; dup {
+			return fmt.Errorf("duplicate image for variant %q", vi.Variant)
+		}
+		byVariant[key] = vi.ImageURL
+	}
+	for _, v := range variants {
+		if byVariant[strings.ToLower(v)] == "" {
+			return fmt.Errorf("image required for variant %q", v)
 		}
 	}
-	for c := range byColor {
-		found := slices.Contains(colors, c)
-		if !found {
-			return fmt.Errorf("color image for unknown color %q", c)
+	variantKeys := make([]string, 0, len(variants))
+	for _, v := range variants {
+		variantKeys = append(variantKeys, strings.ToLower(v))
+	}
+	for _, vi := range images {
+		if !slices.Contains(variantKeys, strings.ToLower(vi.Variant)) {
+			return fmt.Errorf("variant image for unknown variant %q", vi.Variant)
 		}
 	}
 	return nil
@@ -227,10 +278,10 @@ func IsNotFound(err error) bool {
 	return errors.Is(err, repository.ErrNotFound)
 }
 
-func productColorImageURLs(p model.Product) []string {
-	out := make([]string, 0, len(p.ColorImages))
-	for _, ci := range p.ColorImages {
-		u := strings.TrimSpace(ci.ImageURL)
+func productVariantImageURLs(p model.Product) []string {
+	out := make([]string, 0, len(p.VariantImages))
+	for _, vi := range p.VariantImages {
+		u := strings.TrimSpace(vi.ImageURL)
 		if u != "" {
 			out = append(out, u)
 		}

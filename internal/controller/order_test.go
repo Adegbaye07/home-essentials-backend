@@ -8,66 +8,74 @@ import (
 	"homeessentials/backend/internal/model"
 )
 
-func intPtr(n int) *int { return &n }
-
-func TestBuildOrderItems_mixedSizesAndTiers(t *testing.T) {
+func TestBuildOrderItems_pieceAndBundle(t *testing.T) {
 	pid := primitive.NewObjectID()
 	products := map[primitive.ObjectID]model.Product{
 		pid: {
-			ID:     pid,
-			Title:  "Test Bag",
-			Active: true,
-			Colors: []string{"black"},
-			ColorImages: []model.ColorImage{
-				{Color: "black", ImageURL: "https://example.com/black.jpg"},
+			ID:       pid,
+			Title:    "Door mat",
+			Category: model.CategoryDoorMats,
+			Active:   true,
+			Variants: []string{"brown"},
+			VariantImages: []model.VariantImage{
+				{Variant: "brown", ImageURL: "https://example.com/brown.jpg"},
 			},
-			Sizes: []model.SizeVariant{
-				{
-					Code: model.SizeM,
-					Tiers: []model.QtyTier{
-						{MinQty: 1, MaxQty: intPtr(1), UnitPriceKobo: 1500000},
-						{MinQty: 2, MaxQty: intPtr(5), UnitPriceKobo: 1300000},
-						{MinQty: 6, UnitPriceKobo: 1000000},
-					},
-				},
-				{
-					Code: model.SizeL,
-					Tiers: []model.QtyTier{
-						{MinQty: 1, MaxQty: intPtr(1), UnitPriceKobo: 1600000},
-						{MinQty: 2, UnitPriceKobo: 1200000},
-					},
-				},
+			SizePricings: []model.SizePricing{
+				{Size: "2 x 3 ft", PiecePriceKobo: 1500000, BundlePriceKobo: 12000000, PiecesPerBundle: 10},
 			},
 		},
 	}
 
 	lines := []OrderLineInput{
-		{ProductID: pid, Size: model.SizeM, Color: "black", Quantity: 1},
-		{ProductID: pid, Size: model.SizeM, Color: "black", Quantity: 5},
-		{ProductID: pid, Size: model.SizeL, Color: "black", Quantity: 2},
+		{ProductID: pid, Variant: "brown", Size: "2 x 3 ft", Unit: model.OrderUnitPiece, Quantity: 2},
+		{ProductID: pid, Variant: "brown", Size: "2 x 3 ft", Unit: model.OrderUnitBundle, Quantity: 1},
 	}
 
 	items, total, err := buildOrderItems(products, lines)
 	if err != nil {
 		t.Fatalf("build: %v", err)
 	}
-
-	if len(items) != 3 {
-		t.Fatalf("items len = %d, want 3", len(items))
+	if len(items) != 2 {
+		t.Fatalf("items len = %d", len(items))
 	}
-
-	want := int64(1500000 + 5*1300000 + 2*1200000)
+	want := int64(2*1500000 + 12000000)
 	if total != want {
-		t.Fatalf("total = %d, want %d", total, want)
+		t.Fatalf("total = %d want %d", total, want)
+	}
+	if items[0].ImageURL != "https://example.com/brown.jpg" {
+		t.Fatalf("image = %q", items[0].ImageURL)
+	}
+	if items[1].PiecesPerBundle != 10 {
+		t.Fatalf("piecesPerBundle = %d", items[1].PiecesPerBundle)
+	}
+}
+
+func TestBuildOrderItems_cleaningDozen(t *testing.T) {
+	pid := primitive.NewObjectID()
+	products := map[primitive.ObjectID]model.Product{
+		pid: {
+			ID:       pid,
+			Title:    "Brush",
+			Category: model.CategoryCleaningEssentials,
+			Active:   true,
+			Variants: []string{"blue"},
+			VariantImages: []model.VariantImage{
+				{Variant: "blue", ImageURL: "https://example.com/blue.jpg"},
+			},
+			CleaningPricing: &model.CleaningPricing{
+				PiecePriceKobo: 200000,
+				DozenPriceKobo: 2000000,
+			},
+		},
 	}
 
-	if items[0].LineTotalKobo != 1500000 {
-		t.Fatalf("line 1 total = %d", items[0].LineTotalKobo)
+	items, total, err := buildOrderItems(products, []OrderLineInput{
+		{ProductID: pid, Variant: "blue", Unit: model.OrderUnitDozen, Quantity: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
-	if items[0].ImageURL != "https://example.com/black.jpg" {
-		t.Fatalf("line 1 imageUrl = %q", items[0].ImageURL)
-	}
-	if items[1].UnitPriceKobo != 1300000 || items[1].LineTotalKobo != 5*1300000 {
-		t.Fatalf("line 2 pricing wrong: unit=%d line=%d", items[1].UnitPriceKobo, items[1].LineTotalKobo)
+	if total != 2000000 || items[0].Unit != model.OrderUnitDozen {
+		t.Fatalf("got total=%d unit=%s", total, items[0].Unit)
 	}
 }

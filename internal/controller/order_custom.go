@@ -19,7 +19,7 @@ type RecreateImageUploader interface {
 type CustomRequestInput struct {
 	Title            string
 	Description      string
-	Sizes            []model.SizeCode
+	Sizes            []string
 	Colors           []string
 	Quantity         int
 	OfferedTotalKobo int64
@@ -128,17 +128,22 @@ func validateCustomRequest(in CustomRequestInput) (*model.CustomRequest, error) 
 		return nil, fmt.Errorf("at least one size is required")
 	}
 
-	sizes := make([]model.SizeCode, 0, len(in.Sizes))
-	seenSize := make(map[model.SizeCode]struct{}, len(in.Sizes))
-	for _, s := range in.Sizes {
-		if !s.Valid() {
-			return nil, fmt.Errorf("invalid size %q", s)
-		}
-		if _, ok := seenSize[s]; ok {
+	sizes := make([]string, 0, len(in.Sizes))
+	seenSize := make(map[string]struct{}, len(in.Sizes))
+	for _, raw := range in.Sizes {
+		size := strings.TrimSpace(raw)
+		if size == "" {
 			continue
 		}
-		seenSize[s] = struct{}{}
-		sizes = append(sizes, s)
+		key := strings.ToLower(size)
+		if _, ok := seenSize[key]; ok {
+			continue
+		}
+		seenSize[key] = struct{}{}
+		sizes = append(sizes, size)
+	}
+	if len(sizes) == 0 {
+		return nil, fmt.Errorf("at least one size is required")
 	}
 
 	colors := make([]string, 0, len(in.Colors))

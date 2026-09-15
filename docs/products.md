@@ -10,43 +10,41 @@ Base path: `/api/v1/admin/products`
 
 ## Categories
 
-`cross_body` | `hobo` | `duffel` | `male_toilet` | `school` | `travel` | `laptop` | `purse` | `clutch` | `tote` | `shoulder` | `shopping` | `rope` | `satchel` | `jute` | `lunch_box` | `waist_purse` | `folder` | `pencil_case` | `hand_bag` | `flap_bag`
+`foot_mats` | `door_mats` | `center_mats` | `rugs` | `cleaning_essentials`
 
-`mens` is a **legacy** value: still accepted on existing products, but not offered in new-product UI.
+## Variants
 
-## Sizes
+Free-text labels (same idea as the old “colors” field). Each variant needs an image URL in `variantImages`.
 
-`S` | `M` | `L` | `XL` | `XXL`
+## Pricing
 
-## Tier rules (per size)
+Delivery is **not** a product field. Storefront copy is fixed: *1–3 business days (Mon–Sat)*.
 
-- Tiers must start at quantity **1**.
-- Ranges must not overlap; each range starts at `previous.maxQty + 1`.
-- The **last tier** may omit `maxQty` (unlimited quantity above the previous max) **or** set `maxQty` to cap the maximum order quantity for that size.
-- At most one open-ended tier per size; if present, it must be the last tier.
-- Amounts are **kobo** (`unitPriceKobo`): ₦15,000 → `1500000`.
-- **`deliveryDays`** (required on every tier): estimated lead time in **calendar days** (integer ≥ 1). Used for storefront/admin display; checkout pricing ignores it.
+### Mats / rugs (`foot_mats`, `door_mats`, `center_mats`, `rugs`)
 
-Example tiers: 1 @ ₦15k, 2–5 @ ₦13k, 6–10 @ ₦10k, 11+ @ ₦8k:
+`sizePricings` — one row per free-text size:
 
-```json
-[
-  { "minQty": 1, "maxQty": 1, "unitPriceKobo": 1500000, "deliveryDays": 14 },
-  { "minQty": 2, "maxQty": 5, "unitPriceKobo": 1300000, "deliveryDays": 10 },
-  { "minQty": 6, "maxQty": 10, "unitPriceKobo": 1000000, "deliveryDays": 7 },
-  { "minQty": 11, "unitPriceKobo": 800000, "deliveryDays": 5 }
-]
-```
+| Field | Meaning |
+|-------|---------|
+| `size` | e.g. `2 x 5 ft`, `60cm x 90cm` |
+| `piecePriceKobo` | Price for 1 piece |
+| `bundlePriceKobo` | Price for 1 bundle |
+| `piecesPerBundle` | How many pieces are in one bundle (≥ 1) |
 
-Example with a **capped** last tier (max order qty 10 for this size):
+`cleaningPricing` must be omitted.
 
-```json
-[
-  { "minQty": 1, "maxQty": 1, "unitPriceKobo": 1500000, "deliveryDays": 14 },
-  { "minQty": 2, "maxQty": 5, "unitPriceKobo": 1300000, "deliveryDays": 10 },
-  { "minQty": 6, "maxQty": 10, "unitPriceKobo": 1000000, "deliveryDays": 7 }
-]
-```
+### Cleaning essentials
+
+No sizes. Require `cleaningPricing`:
+
+| Field | Meaning |
+|-------|---------|
+| `piecePriceKobo` | Price for 1 piece |
+| `dozenPriceKobo` | Price for 1 dozen (**always 12 pieces**) |
+
+`sizePricings` must be empty / omitted.
+
+Amounts are **kobo**: ₦5,000 → `500000`.
 
 ## Upload product image
 
@@ -56,128 +54,91 @@ Example with a **capped** last tier (max order qty 10 for this size):
 - Body: `multipart/form-data` with field **`file`**
 - Response: `{ "url": "https://..." }`
 
-Add returned URLs to product `colorImages` on create/update (one URL per color).
+Add returned URLs to `variantImages` on create/update.
 
-## Create product
+## Create product (rug example)
 
 `POST /api/v1/admin/products`
 
 ```json
 {
-  "title": "Classic Tote",
-  "description": "Everyday canvas tote.",
-  "category": "tote",
-  "colors": ["black", "tan"],
-  "colorImages": [
-    { "color": "black", "imageUrl": "https://example.com/tote-black.jpg" },
-    { "color": "tan", "imageUrl": "https://example.com/tote-tan.jpg" }
+  "title": "Living room rug",
+  "description": "Soft center rug.",
+  "category": "rugs",
+  "variants": ["beige", "grey"],
+  "variantImages": [
+    { "variant": "beige", "imageUrl": "https://example.com/beige.jpg" },
+    { "variant": "grey", "imageUrl": "https://example.com/grey.jpg" }
   ],
   "active": true,
-  "sizes": [
+  "sizePricings": [
     {
-      "code": "M",
-      "tiers": [
-        { "minQty": 1, "maxQty": 1, "unitPriceKobo": 1500000, "deliveryDays": 14 },
-        { "minQty": 2, "maxQty": 5, "unitPriceKobo": 1300000, "deliveryDays": 10 },
-        { "minQty": 6, "unitPriceKobo": 1000000, "deliveryDays": 7 }
-      ]
+      "size": "2 x 5 ft",
+      "piecePriceKobo": 500000,
+      "bundlePriceKobo": 4500000,
+      "piecesPerBundle": 10
     },
     {
-      "code": "L",
-      "tiers": [
-        { "minQty": 1, "maxQty": 1, "unitPriceKobo": 1600000, "deliveryDays": 14 },
-        { "minQty": 2, "unitPriceKobo": 1200000, "deliveryDays": 7 }
-      ]
+      "size": "3 x 5 ft",
+      "piecePriceKobo": 700000,
+      "bundlePriceKobo": 6300000,
+      "piecesPerBundle": 10
     }
   ]
 }
 ```
 
-**201** — created product document (includes Mongo `id`, timestamps).
+**201** — created product (includes Mongo `id`, timestamps).
+
+## Create product (cleaning example)
+
+```json
+{
+  "title": "Floor mop",
+  "description": "Standard mop head.",
+  "category": "cleaning_essentials",
+  "variants": ["standard"],
+  "variantImages": [
+    { "variant": "standard", "imageUrl": "https://example.com/mop.jpg" }
+  ],
+  "active": true,
+  "cleaningPricing": {
+    "piecePriceKobo": 200000,
+    "dozenPriceKobo": 2000000
+  }
+}
+```
 
 ## List products
 
 `GET /api/v1/admin/products`
 
-Query:
+Query: `category`, `active` (`true`|`false`), `page`, `page_size`.
 
-- `category` — optional filter
-- `active` — `true` | `false`
-- `page` — optional, default `1`
-- `page_size` — optional, default `20`, max `100`
+## Public catalogue
 
-**200** — paginated list:
+`GET /api/v1/products` — active only  
+`GET /api/v1/products/:id` — active only (404 if inactive)
 
-```json
-{
-  "items": [ "...product..." ],
-  "metadata": {
-    "total_items": 42,
-    "current_items": 20,
-    "current_page": 1,
-    "last_page": 3,
-    "next_page": 2,
-    "previous_page": null,
-    "has_next_page": true,
-    "has_previous_page": false
-  }
-}
-```
+## Update / delete
 
-## Get product
+`PUT /api/v1/admin/products/:id` — same body as create  
+`DELETE /api/v1/admin/products/:id` — **204**; blocked with **409** if open orders reference the product
 
-`GET /api/v1/admin/products/:id`
+## Shop order lines (wired for new pricing)
 
-`:id` — 24-char hex ObjectId.
-
-## Update product
-
-`PUT /api/v1/admin/products/:id`
-
-Same body as create.
-
-## Delete product
-
-`DELETE /api/v1/admin/products/:id`
-
-`:id` — 24-char hex ObjectId.
-
-**204** — product removed from MongoDB; all `colorImages` URLs are deleted from object storage when configured (failures are logged, not returned to the client).
-
-**404** — product not found.
-
-**409** — delete blocked because an order still references this product and is not `delivered`:
-
-```json
-{ "error": "There is a pending order for this item.", "code": "product_delete_pending_order" }
-```
-
-```json
-{ "error": "There is an incomplete order for this item.", "code": "product_delete_incomplete_order" }
-```
-
-Pending payment is reported when any blocking order is in `pending_payment`; otherwise open orders (`paid`, `packing`, `in_transit`, etc.) use the incomplete message.
-
-## Example: overlapping tiers (400)
+`POST /api/v1/orders` line shape:
 
 ```json
 {
-  "title": "Bad tiers",
-  "description": "Test",
-  "category": "tote",
-  "colors": ["black"],
-  "colorImages": [{ "color": "black", "imageUrl": "https://example.com/black.jpg" }],
-  "active": true,
-  "sizes": [
-    {
-      "code": "M",
-      "tiers": [
-        { "minQty": 1, "maxQty": 5, "unitPriceKobo": 100, "deliveryDays": 7 },
-        { "minQty": 3, "maxQty": 10, "unitPriceKobo": 90, "deliveryDays": 7 }
-      ]
-    }
-  ]
+  "productId": "...",
+  "variant": "beige",
+  "size": "2 x 5 ft",
+  "unit": "piece",
+  "quantity": 2
 }
 ```
 
-Returns **400** with overlap error.
+- Mats/rugs: `unit` is `piece` or `bundle`; `size` required  
+- Cleaning: `unit` is `piece` or `dozen`; omit `size`  
+- Prices are always resolved server-side from the product document

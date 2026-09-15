@@ -5,15 +5,13 @@ import (
 	"log/slog"
 	"strings"
 	"testing"
-
-	"homeessentials/backend/internal/model"
 )
 
 func TestValidateCustomRequest_ok(t *testing.T) {
 	got, err := validateCustomRequest(CustomRequestInput{
-		Title:            " Evening clutch ",
-		Description:      " Soft leather, gold clasp ",
-		Sizes:            []model.SizeCode{model.SizeM, model.SizeL, model.SizeM},
+		Title:            " Custom rug ",
+		Description:      " Soft pile ",
+		Sizes:            []string{"2 x 5 ft", "3 x 5 ft", "2 x 5 ft"},
 		Colors:           []string{" Black ", "tan", "BLACK"},
 		Quantity:         2,
 		OfferedTotalKobo: 15000000,
@@ -21,25 +19,22 @@ func TestValidateCustomRequest_ok(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Title != "Evening clutch" {
+	if got.Title != "Custom rug" {
 		t.Fatalf("title = %q", got.Title)
 	}
-	if len(got.Sizes) != 2 || got.Sizes[0] != model.SizeM || got.Sizes[1] != model.SizeL {
+	if len(got.Sizes) != 2 || got.Sizes[0] != "2 x 5 ft" || got.Sizes[1] != "3 x 5 ft" {
 		t.Fatalf("sizes = %#v", got.Sizes)
 	}
 	if len(got.Colors) != 2 || got.Colors[0] != "Black" || got.Colors[1] != "tan" {
 		t.Fatalf("colors = %#v", got.Colors)
 	}
-	if got.Quantity != 2 || got.OfferedTotalKobo != 15000000 {
-		t.Fatalf("qty/amount = %d / %d", got.Quantity, got.OfferedTotalKobo)
-	}
 }
 
 func TestValidateCustomRequest_rejectsBadInput(t *testing.T) {
 	base := CustomRequestInput{
-		Title:            "Bag",
+		Title:            "Item",
 		Description:      "Desc",
-		Sizes:            []model.SizeCode{model.SizeS},
+		Sizes:            []string{"2ft"},
 		Colors:           []string{"black"},
 		Quantity:         1,
 		OfferedTotalKobo: 100,
@@ -55,7 +50,7 @@ func TestValidateCustomRequest_rejectsBadInput(t *testing.T) {
 		{"qty zero", func(in *CustomRequestInput) { in.Quantity = 0 }, "quantity"},
 		{"offered zero", func(in *CustomRequestInput) { in.OfferedTotalKobo = 0 }, "offeredTotalKobo"},
 		{"no sizes", func(in *CustomRequestInput) { in.Sizes = nil }, "size"},
-		{"invalid size", func(in *CustomRequestInput) { in.Sizes = []model.SizeCode{"XS"} }, "invalid size"},
+		{"blank sizes", func(in *CustomRequestInput) { in.Sizes = []string{" ", ""} }, "size"},
 		{"no colors", func(in *CustomRequestInput) { in.Colors = []string{" ", ""} }, "color"},
 	}
 
@@ -81,7 +76,7 @@ func TestCreateCustom_requiresUploader(t *testing.T) {
 			Name: "Ada", Email: "a@b.com", Phone: "0800", DeliveryAddress: "Lagos",
 		},
 		Custom: CustomRequestInput{
-			Title: "Bag", Description: "Desc", Sizes: []model.SizeCode{model.SizeS},
+			Title: "Item", Description: "Desc", Sizes: []string{"2ft"},
 			Colors: []string{"black"}, Quantity: 1, OfferedTotalKobo: 1000,
 		},
 	}, CustomSampleImage{

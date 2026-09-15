@@ -38,8 +38,9 @@ func lineItemsFromOrder(order *model.Order) []LineItemRow {
 	for _, it := range order.Items {
 		rows = append(rows, LineItemRow{
 			ProductTitle: it.ProductTitle,
-			Size:         string(it.Size),
-			Color:        it.Color,
+			Size:         it.Size,
+			Variant:      it.Variant,
+			Unit:         string(it.Unit),
 			Quantity:     it.Quantity,
 			UnitPrice:    FormatNGN(it.UnitPriceKobo),
 			LineTotal:    FormatNGN(it.LineTotalKobo),

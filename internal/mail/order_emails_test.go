@@ -64,7 +64,7 @@ func TestOrderCustomCreatedEmail(t *testing.T) {
 		Custom: &model.CustomRequest{
 			Title:            "Tote",
 			Description:      "Canvas tote with lining",
-			Sizes:            []model.SizeCode{model.SizeM, model.SizeL},
+			Sizes:            []string{"2 x 5 ft", "3 x 5 ft"},
 			Colors:           []string{"olive", "cream"},
 			Quantity:         3,
 			OfferedTotalKobo: 4500000,

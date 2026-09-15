@@ -77,17 +77,13 @@ func TestWriteProductError_notFound(t *testing.T) {
 	}
 }
 
-func TestWriteProductError_tierValidationReadable(t *testing.T) {
+func TestWriteProductError_pricingValidation(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
-	maxOne := 1
-	tierErr := pricing.ValidateTiers(model.SizeM, []model.QtyTier{
-		{MinQty: 1, MaxQty: &maxOne, UnitPriceKobo: 100},
-		{MinQty: 3, UnitPriceKobo: 90},
-	})
-	writeProductError(c, tierErr)
+	err := pricing.ValidateProductPricing(model.CategoryRugs, nil, nil)
+	writeProductError(c, err)
 
 	if w.Code != http.StatusBadRequest {
 		t.Fatalf("status %d want 400 body %s", w.Code, w.Body.String())
@@ -98,7 +94,7 @@ func TestWriteProductError_tierValidationReadable(t *testing.T) {
 	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(body.Error, "second price tier for size M") {
-		t.Fatalf("error %q not readable", body.Error)
+	if !strings.Contains(body.Error, "sizePricing") {
+		t.Fatalf("error %q", body.Error)
 	}
 }

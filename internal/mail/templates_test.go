@@ -14,9 +14,10 @@ func TestRenderDemoIncludesBrandAndFooter(t *testing.T) {
 		ItemsTableData: mail.ItemsTableData{
 			Items: []mail.LineItemRow{
 				{
-					ProductTitle: "Leather tote",
-					Size:         "M",
-					Color:        "black",
+					ProductTitle: "Door mat",
+					Size:         "2 x 3 ft",
+					Variant:      "brown",
+					Unit:         "piece",
 					Quantity:     2,
 					UnitPrice:    mail.FormatNGN(1800000),
 					LineTotal:    mail.FormatNGN(3600000),
@@ -30,8 +31,8 @@ func TestRenderDemoIncludesBrandAndFooter(t *testing.T) {
 	}
 	for _, want := range []string{
 		"Home Essentials by Kamgol",
-		"Leather tote",
-		"black",
+		"Door mat",
+		"brown",
 		"do not reply",
 		"Preview line.",
 	} {
