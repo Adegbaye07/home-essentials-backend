@@ -14,7 +14,6 @@ import (
 	"homeessentials/backend/internal/mail"
 	"homeessentials/backend/internal/model"
 	"homeessentials/backend/internal/pagination"
-	"homeessentials/backend/internal/paystack"
 	"homeessentials/backend/internal/pricing"
 	"homeessentials/backend/internal/repository"
 )
@@ -53,23 +52,14 @@ type UpdateOrderStatusInput struct {
 type OrderController struct {
 	orders          *repository.OrderRepository
 	products        *repository.ProductRepository
-	recreateImages  RecreateImageUploader
-	paystack        PaymentLinker
 	mail            *mail.Sender
 	log             *slog.Logger
 	clientPublicURL string
 }
 
-// PaymentLinker initializes Paystack hosted checkout sessions.
-type PaymentLinker interface {
-	InitializeTransaction(ctx context.Context, email string, amountKobo int64, reference string) (paystack.InitializeResult, error)
-}
-
 func NewOrderController(
 	orders *repository.OrderRepository,
 	products *repository.ProductRepository,
-	recreateImages RecreateImageUploader,
-	ps PaymentLinker,
 	mailer *mail.Sender,
 	log *slog.Logger,
 	clientPublicURL string,
@@ -77,8 +67,6 @@ func NewOrderController(
 	return &OrderController{
 		orders:          orders,
 		products:        products,
-		recreateImages:  recreateImages,
-		paystack:        ps,
 		mail:            mailer,
 		log:             log,
 		clientPublicURL: strings.TrimSuffix(clientPublicURL, "/"),
@@ -222,15 +210,12 @@ func (c *OrderController) UpdateStatus(ctx context.Context, id primitive.ObjectI
 	}
 	model.NormalizeOrder(order)
 
-	if !model.AllowedAdminTransition(order.OrderType, order.Status, in.Status) {
+	if !model.AllowedAdminTransition(order.Status, in.Status) {
 		return nil, fmt.Errorf("cannot change status from %s to %s", order.Status, in.Status)
 	}
 
 	previousStatus := order.Status
 	note := strings.TrimSpace(in.Note)
-	if err := model.ValidateStatusChangeNote(order.OrderType, order.Status, in.Status, note); err != nil {
-		return nil, err
-	}
 	now := time.Now().UTC()
 
 	if in.Status == model.OrderStatusPaid {

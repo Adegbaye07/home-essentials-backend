@@ -29,8 +29,7 @@ supabase storage enabled bucket=product-images
 
 - Admin UI → `POST /api/v1/admin/uploads` (JWT, multipart field `file`)
 - API stores objects under `products/{uuid}.{ext}` via [storage-go](https://github.com/supabase-community/storage-go)
-- Response: `{ "url": "<public-url>" }` stored on the product `colorImages` entry for a color
-- Custom (recreate) orders → `POST /api/v1/orders/custom` uploads the sample under `recreate/{uuid}.{ext}` in the same bucket
+- Response: `{ "url": "<public-url>" }` stored on the product `variantImages` entry for a variant
 
 Allowed types: JPEG, PNG, WebP, GIF (max 5MB).
 
@@ -38,7 +37,7 @@ If env vars are missing, the route still exists but returns **503** `upload serv
 
 ## Orphan cleanup on product update
 
-When an admin **updates** a product and removes or replaces a `colorImages` URL, the API deletes the old Supabase object **after** MongoDB saves successfully. Only paths under `products/` in your configured bucket are removed. Failed deletes are logged and do not fail the update.
+When an admin **updates** a product and removes or replaces a `variantImages` URL, the API deletes the old Supabase object **after** MongoDB saves successfully. Only paths under `products/` in your configured bucket are removed. Failed deletes are logged and do not fail the update.
 
 Uploads that never get saved on a product (abandoned form) are **not** deleted automatically.
 

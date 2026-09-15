@@ -141,15 +141,7 @@ func main() {
 	paymentHandler := handler.NewPaymentHandler(paymentCtrl, cfg.PaystackSecretKey)
 
 	productRepo := repository.NewProductRepository(mongo.Database)
-	var recreateUploader controller.RecreateImageUploader
-	if storageClient != nil {
-		recreateUploader = storageClient
-	}
-	var paymentLinker controller.PaymentLinker
-	if psClient != nil {
-		paymentLinker = psClient
-	}
-	orderCtrl := controller.NewOrderController(orderRepo, productRepo, recreateUploader, paymentLinker, mailer, log, cfg.ClientPublicURL)
+	orderCtrl := controller.NewOrderController(orderRepo, productRepo, mailer, log, cfg.ClientPublicURL)
 	orderHandler := handler.NewOrderHandler(orderCtrl)
 
 	router := route.NewRouter(cfg, mongo, tokens, uploadHandler, orderHandler, paymentHandler, orderRepo, storageClient, log)

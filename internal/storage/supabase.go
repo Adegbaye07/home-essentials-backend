@@ -37,11 +37,6 @@ func (c *Client) UploadProductImage(filename string, r io.Reader, contentType st
 	return c.uploadImage("products", filename, r, contentType)
 }
 
-// UploadRecreateImage stores a custom-order sample under recreate/{uuid}.{ext}.
-func (c *Client) UploadRecreateImage(filename string, r io.Reader, contentType string) (string, error) {
-	return c.uploadImage("recreate", filename, r, contentType)
-}
-
 func (c *Client) uploadImage(folder, filename string, r io.Reader, contentType string) (string, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if ext == "" {

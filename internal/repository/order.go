@@ -235,14 +235,12 @@ func (r *OrderRepository) FindForTrack(ctx context.Context, tracking, email stri
 	return &o, nil
 }
 
-// DeleteAbandonedBefore hard-deletes shop abandoned orders with abandonedAt strictly before cutoff.
-// Custom (recreate) orders are never deleted by this cleanup.
+// DeleteAbandonedBefore hard-deletes abandoned orders with abandonedAt strictly before cutoff.
 func (r *OrderRepository) DeleteAbandonedBefore(ctx context.Context, cutoff time.Time) (int64, error) {
 	cutoff = cutoff.UTC()
 	res, err := r.col.DeleteMany(ctx, bson.M{
 		"status":      model.OrderStatusAbandoned,
 		"abandonedAt": bson.M{"$lt": cutoff},
-		"orderType":   bson.M{"$ne": model.OrderTypeCustom},
 	})
 	if err != nil {
 		return 0, fmt.Errorf("delete abandoned orders: %w", err)

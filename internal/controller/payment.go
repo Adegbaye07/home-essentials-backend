@@ -75,11 +75,8 @@ func (c *PaymentController) Initialize(ctx context.Context, orderID primitive.Ob
 
 	switch order.Status {
 	case model.OrderStatusPendingPayment:
-		// ok — shop checkout and custom post-accept
+		// ok — shop checkout
 	case model.OrderStatusAbandoned:
-		if order.OrderType.Normalized() == model.OrderTypeCustom {
-			return InitializePaymentResult{}, fmt.Errorf("order is not awaiting payment")
-		}
 		now := time.Now().UTC()
 		order.Status = model.OrderStatusPendingPayment
 		order.AbandonedAt = nil
