@@ -63,6 +63,14 @@ Email templates live under `internal/mail/email-templates/` (embedded at build t
 
 Configure webhook URL in Paystack dashboard: `https://YOUR_HOST/api/v1/webhooks/paystack` (use ngrok/Cloudflare tunnel locally).
 
+### Production checklist
+
+- [ ] `CORS_ORIGINS` lists live client + admin HTTPS origins (no trailing slash)
+- [ ] `CLIENT_PUBLIC_URL` is the live storefront (email /track links)
+- [ ] `PAYSTACK_SECRET_KEY` / client `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY` are the matching live or test pair
+- [ ] Webhook URL points at this API host and returns 200 for `charge.success`
+- [ ] SMTP + `ADMIN_NOTIFY_EMAIL` set if paid/status emails are required
+
 ## Verify (success page)
 
 `GET /api/v1/payments/verify?reference=kam_…`

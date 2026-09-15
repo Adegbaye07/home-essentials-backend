@@ -27,7 +27,7 @@ func TestParseCategory_homeEssentials(t *testing.T) {
 func TestParseCategory_invalid(t *testing.T) {
 	_, err := ParseCategory("tote")
 	if err == nil {
-		t.Fatal("expected error for legacy bag category")
+		t.Fatal("expected error for unknown category")
 	}
 }
 
