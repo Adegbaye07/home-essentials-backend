@@ -138,12 +138,34 @@ func (c *PaymentController) Verify(ctx context.Context, reference string) (Verif
 		CustomerEmail:  order.Customer.Email,
 	}
 
-	if c.paystack != nil {
-		v, err := c.paystack.VerifyTransaction(ctx, reference)
-		if err != nil {
-			return VerifyPaymentResult{}, fmt.Errorf("verify paystack: %w", err)
+	if c.paystack == nil {
+		return out, nil
+	}
+
+	v, err := c.paystack.VerifyTransaction(ctx, reference)
+	if err != nil {
+		return VerifyPaymentResult{}, fmt.Errorf("verify paystack: %w", err)
+	}
+	out.PaystackStatus = v.Status
+
+	// Reconcile when Paystack confirms success but webhook has not landed yet.
+	if strings.EqualFold(v.Status, "success") {
+		switch order.Status {
+		case model.OrderStatusPendingPayment, model.OrderStatusAbandoned:
+			if v.Amount > 0 && v.Amount != order.TotalAmountKobo {
+				return VerifyPaymentResult{}, fmt.Errorf("payment amount mismatch")
+			}
+			if err := c.HandleChargeSuccess(ctx, reference, v.Amount); err != nil {
+				return VerifyPaymentResult{}, err
+			}
+			order, err = c.orders.FindByPaystackReference(ctx, reference)
+			if err != nil {
+				return VerifyPaymentResult{}, err
+			}
+			model.NormalizeOrder(order)
+			out.Status = order.Status
+			out.TrackingNumber = order.TrackingNumber
 		}
-		out.PaystackStatus = v.Status
 	}
 
 	return out, nil

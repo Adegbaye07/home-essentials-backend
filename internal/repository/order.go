@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -221,10 +223,15 @@ func (r *OrderRepository) DeleteByID(ctx context.Context, id primitive.ObjectID)
 }
 
 func (r *OrderRepository) FindForTrack(ctx context.Context, tracking, email string) (*model.Order, error) {
+	tracking = strings.TrimSpace(tracking)
+	email = strings.TrimSpace(email)
 	var o model.Order
 	err := r.col.FindOne(ctx, bson.M{
 		"trackingNumber": tracking,
-		"customer.email": email,
+		"customer.email": bson.M{
+			"$regex":   "^" + regexp.QuoteMeta(email) + "$",
+			"$options": "i",
+		},
 	}).Decode(&o)
 	if err != nil {
 		if errors.Is(err, mongo.ErrNoDocuments) {

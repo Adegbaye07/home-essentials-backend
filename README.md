@@ -2,9 +2,9 @@
 
 Go (Gin) backend for **Home Essentials by Kamgol** — MongoDB, Paystack, SMTP, and Supabase Storage.
 
-## Phase 1 status
+## Phase 5 status
 
-Product domain uses Home Essentials categories, variants + images, free-text size piece/bundle pricing, and cleaning piece/dozen pricing. Auth, uploads, and public catalogue are ready. Admin UI (Phase 2) still shows the old bag form until updated.
+Paystack checkout, abandon/resume, verify reconciliation, `KAM-` tracking, SMTP paid/status emails, and `/track` are wired for the shop-only Home Essentials flow.
 
 ## Prerequisites
 
