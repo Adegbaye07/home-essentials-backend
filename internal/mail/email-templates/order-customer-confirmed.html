@@ -1,0 +1,17 @@
+{{define "order-customer-confirmed"}}
+{{template "shell-start" .}}
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 24px; color: #44403c;">Hi{{if .CustomerName}} {{.CustomerName}}{{end}},</p>
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 24px; color: #44403c;">
+          Thank you for your order. Payment has been confirmed and we are preparing your order.
+        </p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #1c1917;"><strong>Tracking ID:</strong> {{.TrackingNumber}}</p>
+        {{template "items-table" .}}
+        {{template "totals-block" .}}
+        <p style="margin: 20px 0 0 0; font-size: 14px; line-height: 24px; color: #44403c;">
+          We will email you when your order status changes. You can also track progress anytime:
+        </p>
+        <p style="margin: 12px 0 0 0; text-align: center;">
+          <a href="{{.TrackPageURL}}" style="display: inline-block; background: #AE7820; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 14px 28px; border-radius: 10px;">Track your order</a>
+        </p>
+{{template "shell-end" .}}
+{{end}}

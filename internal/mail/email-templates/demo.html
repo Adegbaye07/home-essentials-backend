@@ -1,0 +1,6 @@
+{{define "demo"}}
+{{template "shell-start" .}}
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 24px; color: #44403c;">{{.Intro}}</p>
+        {{if .Items}}{{template "items-table" .}}{{end}}
+{{template "shell-end" .}}
+{{end}}

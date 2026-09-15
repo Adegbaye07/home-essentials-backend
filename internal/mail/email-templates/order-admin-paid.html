@@ -1,0 +1,15 @@
+{{define "order-admin-paid"}}
+{{template "shell-start" .}}
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 24px; color: #44403c;">A customer order has been paid.</p>
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="margin: 0 0 20px 0; font-size: 14px; color: #44403c;">
+          <tr><td style="padding: 4px 0;"><strong style="color: #1c1917;">Order ID:</strong> {{.OrderID}}</td></tr>
+          <tr><td style="padding: 4px 0;"><strong style="color: #1c1917;">Tracking ID:</strong> {{.TrackingNumber}}</td></tr>
+          {{if .CustomerName}}<tr><td style="padding: 4px 0;"><strong style="color: #1c1917;">Name:</strong> {{.CustomerName}}</td></tr>{{end}}
+          <tr><td style="padding: 4px 0;"><strong style="color: #1c1917;">Email:</strong> {{.CustomerEmail}}</td></tr>
+          <tr><td style="padding: 4px 0;"><strong style="color: #1c1917;">Phone:</strong> {{.CustomerPhone}}</td></tr>
+          <tr><td style="padding: 4px 0;"><strong style="color: #1c1917;">Delivery address:</strong> {{.DeliveryAddress}}</td></tr>
+        </table>
+        {{template "items-table" .}}
+        {{template "totals-block" .}}
+{{template "shell-end" .}}
+{{end}}
