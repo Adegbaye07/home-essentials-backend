@@ -14,7 +14,8 @@ func TestRequestToInput_mapsRugPricing(t *testing.T) {
 		VariantImages: []variantImageDTO{
 			{Variant: "beige", ImageURL: "https://example.com/beige.jpg"},
 		},
-		Active: true,
+		VideoURL: "https://example.com/clip.mp4",
+		Active:   true,
 		SizePricings: []sizePricingDTO{
 			{Size: "2 x 5 ft", PiecePriceKobo: 500000, BundlePriceKobo: 4500000, PiecesPerBundle: 10},
 		},
@@ -27,6 +28,9 @@ func TestRequestToInput_mapsRugPricing(t *testing.T) {
 	}
 	if in.SizePricings[0].PiecesPerBundle != 10 {
 		t.Fatalf("piecesPerBundle: %+v", in.SizePricings[0])
+	}
+	if in.VideoURL != "https://example.com/clip.mp4" {
+		t.Fatalf("videoUrl: %q", in.VideoURL)
 	}
 	if in.CleaningPricing != nil {
 		t.Fatal("expected nil cleaningPricing")

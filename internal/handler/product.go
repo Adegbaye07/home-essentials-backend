@@ -41,14 +41,15 @@ type cleaningPricingDTO struct {
 }
 
 type productRequest struct {
-	Title           string               `json:"title"`
-	Description     string               `json:"description"`
-	Category        string               `json:"category"`
-	Variants        []string             `json:"variants"`
-	VariantImages   []variantImageDTO    `json:"variantImages"`
-	SizePricings    []sizePricingDTO     `json:"sizePricings"`
-	CleaningPricing *cleaningPricingDTO  `json:"cleaningPricing"`
-	Active          bool                 `json:"active"`
+	Title           string              `json:"title"`
+	Description     string              `json:"description"`
+	Category        string              `json:"category"`
+	Variants        []string            `json:"variants"`
+	VariantImages   []variantImageDTO   `json:"variantImages"`
+	VideoURL        string              `json:"videoUrl"`
+	SizePricings    []sizePricingDTO    `json:"sizePricings"`
+	CleaningPricing *cleaningPricingDTO `json:"cleaningPricing"`
+	Active          bool                `json:"active"`
 }
 
 func (h *ProductHandler) Create(c *gin.Context) {
@@ -258,6 +259,7 @@ func requestToInput(req productRequest) (controller.ProductInput, error) {
 		Category:        cat,
 		Variants:        req.Variants,
 		VariantImages:   variantImages,
+		VideoURL:        req.VideoURL,
 		SizePricings:    sizePricings,
 		CleaningPricing: cleaning,
 		Active:          req.Active,

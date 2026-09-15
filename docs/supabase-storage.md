@@ -1,6 +1,6 @@
-# Supabase Storage (product images)
+# Supabase Storage (product images & videos)
 
-The API uploads product images server-side using the **service role** key. Never put Supabase secrets in the admin or client apps.
+The API uploads product images and authenticity videos server-side using the **service role** key. Never put Supabase secrets in the admin or client apps.
 
 ## Dashboard setup
 
@@ -27,17 +27,21 @@ supabase storage enabled bucket=product-images
 
 ## Upload flow
 
-- Admin UI → `POST /api/v1/admin/uploads` (JWT, multipart field `file`)
+- Images: Admin UI → `POST /api/v1/admin/uploads` (JWT, multipart field `file`)
+- Videos: Admin UI → `POST /api/v1/admin/uploads/video` (JWT, multipart field `file`)
 - API stores objects under `products/{uuid}.{ext}` via [storage-go](https://github.com/supabase-community/storage-go)
-- Response: `{ "url": "<public-url>" }` stored on the product `variantImages` entry for a variant
+- Response: `{ "url": "<public-url>" }`
+  - Images → product `variantImages[].imageUrl`
+  - Videos → product `videoUrl` (optional authenticity clip)
 
-Allowed types: JPEG, PNG, WebP, GIF (max 5MB).
+Allowed image types: JPEG, PNG, WebP, GIF (max **5MB**).  
+Allowed video types: MP4, WebM, MOV (max **5MB**).
 
-If env vars are missing, the route still exists but returns **503** `upload service not configured`.
+If env vars are missing, the routes still exist but return **503** `upload service not configured`.
 
 ## Orphan cleanup on product update
 
-When an admin **updates** a product and removes or replaces a `variantImages` URL, the API deletes the old Supabase object **after** MongoDB saves successfully. Only paths under `products/` in your configured bucket are removed. Failed deletes are logged and do not fail the update.
+When an admin **updates** a product and removes or replaces a `variantImages` URL or `videoUrl`, the API deletes the old Supabase object **after** MongoDB saves successfully. Only paths under `products/` in your configured bucket are removed. Failed deletes are logged and do not fail the update. Product **delete** also removes stored images and video for that product.
 
 Uploads that never get saved on a product (abandoned form) are **not** deleted automatically.
 
@@ -52,10 +56,14 @@ Uploads that never get saved on a product (abandoned form) are **not** deleted a
 ## Verify
 
 ```bash
-# After login, replace TOKEN and path to a small jpg
+# After login, replace TOKEN and path to a small jpg / mp4
 curl -s -X POST http://localhost:8080/api/v1/admin/uploads \
   -H "Authorization: Bearer TOKEN" \
   -F "file=@./test.jpg"
+
+curl -s -X POST http://localhost:8080/api/v1/admin/uploads/video \
+  -H "Authorization: Bearer TOKEN" \
+  -F "file=@./clip.mp4"
 ```
 
 Open the returned `url` in a browser.

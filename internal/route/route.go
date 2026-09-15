@@ -55,6 +55,7 @@ func NewRouter(
 	protected.PUT("/products/:id", productHandler.Update)
 	protected.DELETE("/products/:id", productHandler.Delete)
 	protected.POST("/uploads", uploadHandler.UploadProductImage)
+	protected.POST("/uploads/video", uploadHandler.UploadProductVideo)
 	protected.GET("/orders", orderHandler.ListAdmin)
 	protected.GET("/orders/:id", orderHandler.GetAdmin)
 	protected.PATCH("/orders/:id/status", orderHandler.UpdateStatusAdmin)

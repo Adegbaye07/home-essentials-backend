@@ -40,7 +40,7 @@ func (c *Client) UploadProductImage(filename string, r io.Reader, contentType st
 func (c *Client) uploadImage(folder, filename string, r io.Reader, contentType string) (string, error) {
 	ext := strings.ToLower(filepath.Ext(filename))
 	if ext == "" {
-		ext = ".jpg"
+		ext = defaultExtForContentType(contentType)
 	}
 
 	objectPath := fmt.Sprintf("%s/%s%s", folder, uuid.NewString(), ext)
@@ -60,6 +60,25 @@ func (c *Client) uploadImage(folder, filename string, r io.Reader, contentType s
 	}
 
 	return public.SignedURL, nil
+}
+
+func defaultExtForContentType(contentType string) string {
+	switch strings.ToLower(strings.TrimSpace(contentType)) {
+	case "image/png":
+		return ".png"
+	case "image/webp":
+		return ".webp"
+	case "image/gif":
+		return ".gif"
+	case "video/mp4":
+		return ".mp4"
+	case "video/webm":
+		return ".webm"
+	case "video/quicktime":
+		return ".mov"
+	default:
+		return ".jpg"
+	}
 }
 
 // DeleteByPublicURL removes a product image object previously uploaded to this bucket.

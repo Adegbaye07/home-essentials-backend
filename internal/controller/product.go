@@ -27,6 +27,7 @@ type ProductInput struct {
 	Category        model.Category
 	Variants        []string
 	VariantImages   []model.VariantImage
+	VideoURL        string
 	SizePricings    []model.SizePricing
 	CleaningPricing *model.CleaningPricing
 	Active          bool
@@ -63,6 +64,7 @@ func (c *ProductController) Create(ctx context.Context, in ProductInput) (*model
 		Category:        normalized.Category,
 		Variants:        normalized.Variants,
 		VariantImages:   normalized.VariantImages,
+		VideoURL:        normalized.VideoURL,
 		SizePricings:    normalized.SizePricings,
 		CleaningPricing: normalized.CleaningPricing,
 		Active:          normalized.Active,
@@ -85,13 +87,14 @@ func (c *ProductController) Update(ctx context.Context, id primitive.ObjectID, i
 		return nil, err
 	}
 
-	previousURLs := productVariantImageURLs(*existing)
+	previousURLs := productMediaURLs(*existing)
 
 	existing.Title = normalized.Title
 	existing.Description = normalized.Description
 	existing.Category = normalized.Category
 	existing.Variants = normalized.Variants
 	existing.VariantImages = normalized.VariantImages
+	existing.VideoURL = normalized.VideoURL
 	existing.SizePricings = normalized.SizePricings
 	existing.CleaningPricing = normalized.CleaningPricing
 	existing.Active = normalized.Active
@@ -100,7 +103,7 @@ func (c *ProductController) Update(ctx context.Context, id primitive.ObjectID, i
 		return nil, fmt.Errorf("update product: %w", err)
 	}
 
-	c.deleteOrphanedProductImages(previousURLs, productVariantImageURLs(*existing))
+	c.deleteOrphanedProductImages(previousURLs, productMediaURLs(*existing))
 
 	return existing, nil
 }
@@ -136,12 +139,12 @@ func (c *ProductController) Delete(ctx context.Context, id primitive.ObjectID) e
 		return err
 	}
 
-	imageURLs := productVariantImageURLs(*existing)
+	mediaURLs := productMediaURLs(*existing)
 	if err := c.repo.Delete(ctx, id); err != nil {
 		return err
 	}
 
-	c.deleteOrphanedProductImages(imageURLs, nil)
+	c.deleteOrphanedProductImages(mediaURLs, nil)
 	return nil
 }
 
@@ -151,6 +154,7 @@ type normalizedProductInput struct {
 	Category        model.Category
 	Variants        []string
 	VariantImages   []model.VariantImage
+	VideoURL        string
 	SizePricings    []model.SizePricing
 	CleaningPricing *model.CleaningPricing
 	Active          bool
@@ -161,6 +165,7 @@ func normalizeAndValidateProductInput(in ProductInput) (normalizedProductInput, 
 		Title:       strings.TrimSpace(in.Title),
 		Description: strings.TrimSpace(in.Description),
 		Category:    in.Category,
+		VideoURL:    strings.TrimSpace(in.VideoURL),
 		Active:      in.Active,
 	}
 	if out.Title == "" {
@@ -278,13 +283,16 @@ func IsNotFound(err error) bool {
 	return errors.Is(err, repository.ErrNotFound)
 }
 
-func productVariantImageURLs(p model.Product) []string {
-	out := make([]string, 0, len(p.VariantImages))
+func productMediaURLs(p model.Product) []string {
+	out := make([]string, 0, len(p.VariantImages)+1)
 	for _, vi := range p.VariantImages {
 		u := strings.TrimSpace(vi.ImageURL)
 		if u != "" {
 			out = append(out, u)
 		}
+	}
+	if u := strings.TrimSpace(p.VideoURL); u != "" {
+		out = append(out, u)
 	}
 	return out
 }

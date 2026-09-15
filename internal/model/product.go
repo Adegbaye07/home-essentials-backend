@@ -33,6 +33,7 @@ type Product struct {
 	Category        Category           `bson:"category" json:"category"`
 	Variants        []string           `bson:"variants" json:"variants"`
 	VariantImages   []VariantImage     `bson:"variantImages" json:"variantImages"`
+	VideoURL        string             `bson:"videoUrl,omitempty" json:"videoUrl,omitempty"`
 	SizePricings    []SizePricing      `bson:"sizePricings,omitempty" json:"sizePricings,omitempty"`
 	CleaningPricing *CleaningPricing   `bson:"cleaningPricing,omitempty" json:"cleaningPricing,omitempty"`
 	Active          bool               `bson:"active" json:"active"`

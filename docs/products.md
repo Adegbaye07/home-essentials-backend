@@ -52,9 +52,21 @@ Amounts are **kobo**: ₦5,000 → `500000`.
 
 - Header: `Authorization: Bearer <token>`
 - Body: `multipart/form-data` with field **`file`**
+- Allowed: JPEG, PNG, WebP, GIF (max **5MB**)
 - Response: `{ "url": "https://..." }`
 
 Add returned URLs to `variantImages` on create/update.
+
+## Upload authenticity video (optional)
+
+`POST /api/v1/admin/uploads/video`
+
+- Header: `Authorization: Bearer <token>`
+- Body: `multipart/form-data` with field **`file`**
+- Allowed: MP4, WebM, MOV (`video/mp4`, `video/webm`, `video/quicktime`) — max **5MB**
+- Response: `{ "url": "https://..." }`
+
+Store the returned URL as optional product field **`videoUrl`** on create/update. Omit or send `""` to clear. Variant images are unchanged; video is product-level authenticity media for the storefront.
 
 ## Create product (rug example)
 
@@ -70,6 +82,7 @@ Add returned URLs to `variantImages` on create/update.
     { "variant": "beige", "imageUrl": "https://example.com/beige.jpg" },
     { "variant": "grey", "imageUrl": "https://example.com/grey.jpg" }
   ],
+  "videoUrl": "https://example.com/authenticity.mp4",
   "active": true,
   "sizePricings": [
     {
