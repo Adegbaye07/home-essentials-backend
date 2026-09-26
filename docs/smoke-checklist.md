@@ -5,8 +5,8 @@ End-to-end handoff. Run backend (`:8080`), admin (`:3001`), and client (`:3000`)
 ## Preflight
 
 - [ ] Backend `.env` from `.env.example` — `MONGODB_URI` includes `/home_essentials`, `JWT_SECRET` set
-- [ ] Admin `.env.local` — `NEXT_PUBLIC_API_URL`
-- [ ] Client `.env.local` — `NEXT_PUBLIC_API_URL` + `NEXT_PUBLIC_PAYSTACK_PUBLIC_KEY`
+- [ ] Admin `src/lib/config.ts` — `apiUrl`
+- [ ] Client `src/lib/config.ts` — `apiUrl` + `paystackPublicKey`
 - [ ] `CORS_ORIGINS` includes both frontend origins
 - [ ] `GET /health` and `GET /ready` OK
 - [ ] Admin user seeded ([admin-seed.md](admin-seed.md))
