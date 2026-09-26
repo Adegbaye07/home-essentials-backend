@@ -75,7 +75,7 @@ jobs:
             systemctl restart ${SERVICE}
             sleep 3
             systemctl is-active ${SERVICE}
-            curl -sf http://127.0.0.1:8080/health
+            curl -sf http://127.0.0.1:8390/health
           " || {
             echo 'Deploy failed. Rolling back binary...'
             sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "
