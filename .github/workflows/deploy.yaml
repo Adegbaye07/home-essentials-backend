@@ -1,4 +1,4 @@
-name: Deploy Home Essentials Backend
+name: Deploy home essentials backend
 
 on:
   push:
@@ -16,7 +16,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v5
         with:
-          go-version: "1.23"
+          go-version: "1.22"
           cache-dependency-path: go.sum
 
       - name: Install dependencies
@@ -46,18 +46,20 @@ jobs:
           SSH_OPTS="-p $SSH_PORT -o StrictHostKeyChecking=no"
           SCP_OPTS="-P $SSH_PORT -o StrictHostKeyChecking=no"
 
-          # Ensure remote directory exists
-          sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "mkdir -p $REMOTE_DIR"
+          sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "mkdir -p $REMOTE_DIR/deploy"
 
-          # Stop the service before replacing the binary
+          sshpass -p "$SSH_PASSWORD" scp $SCP_OPTS deploy/home-essentials-backend.service root@$HOST:$REMOTE_DIR/deploy/
+          sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "
+            cp $REMOTE_DIR/deploy/home-essentials-backend.service /etc/systemd/system/${SERVICE}.service &&
+            systemctl daemon-reload
+          "
+
           sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "systemctl stop ${SERVICE} || true"
 
-          # Backup current binary
           sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "
             mv $REMOTE_DIR/${BIN} $REMOTE_DIR/${BIN}.bak 2>/dev/null || true
           "
 
-          # Upload new binary
           sshpass -p "$SSH_PASSWORD" scp $SCP_OPTS ${BIN} root@$HOST:$REMOTE_DIR/ || {
             echo 'Binary upload failed. Restoring...'
             sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "
@@ -67,14 +69,13 @@ jobs:
             exit 1
           }
 
-          # Make executable, restart service and health-check
           sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "
             chmod +x $REMOTE_DIR/${BIN}
             systemctl enable ${SERVICE}
             systemctl restart ${SERVICE}
             sleep 3
             systemctl is-active ${SERVICE}
-            curl -sf http://127.0.0.1:8390/health
+            curl -sf http://127.0.0.1:8080/health
           " || {
             echo 'Deploy failed. Rolling back binary...'
             sshpass -p "$SSH_PASSWORD" ssh $SSH_OPTS root@$HOST "
