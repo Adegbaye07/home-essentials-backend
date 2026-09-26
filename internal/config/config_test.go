@@ -18,7 +18,7 @@ func TestLoad_DefaultCORS(t *testing.T) {
 	if len(cfg.CORSOrigins) != 2 {
 		t.Fatalf("len(CORSOrigins) = %d, want 2", len(cfg.CORSOrigins))
 	}
-	if cfg.HTTPAddr != ":8080" {
+	if cfg.HTTPAddr != ":8390" {
 		t.Fatalf("HTTPAddr = %q", cfg.HTTPAddr)
 	}
 }
