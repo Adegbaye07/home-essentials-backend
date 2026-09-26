@@ -1,16 +1,15 @@
 [Unit]
-Description=Home Essentials Backend (Go)
+Description=home-essentials-backend service
 After=network-online.target
 Wants=network-online.target
 
 [Service]
 Type=simple
 User=root
-WorkingDirectory=/root/home-essentials-backend
+WorkingDirectory=/root//home-essentials-backend
 EnvironmentFile=-/root/home-essentials-backend/.env
-ExecStart=/root/home-essentials-backend/home-essentials-backend
-Restart=on-failure
-RestartSec=5
+ExecStart=/root/home-essentials-backend//home-essentials-backend
+Restart=always
 
 [Install]
 WantedBy=multi-user.target
