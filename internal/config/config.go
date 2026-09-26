@@ -40,7 +40,7 @@ func (c Config) SMTPConfigured() bool {
 
 func Load() (Config, error) {
 	cfg := Config{
-		HTTPAddr:              getenv("HTTP_ADDR", ":8080"),
+		HTTPAddr:              getenv("HTTP_ADDR", ":8390"),
 		MongoURI:              os.Getenv("MONGODB_URI"),
 		JWTSecret:             os.Getenv("JWT_SECRET"),
 		SupabaseURL:           os.Getenv("SUPABASE_URL"),
