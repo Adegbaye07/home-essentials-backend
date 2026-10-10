@@ -1,6 +1,8 @@
 # Orders API (Phase 3)
 
-Shop checkout only. Amounts are **kobo** (`totalAmountKobo`, line fields).
+Shop checkout only. Amounts are **kobo** (`subtotalAmountKobo`, `deliveryFeeKobo`, `totalAmountKobo`, line fields).
+
+**Delivery fee:** ₦2,000 (`200000` kobo) once per order when **every** line is `piece`. Free when any line is `bundle` or `dozen`. `totalAmountKobo` = subtotal + delivery fee (Paystack charges this total).
 
 **Statuses:** `pending_payment` (on create) → **`paid`** (admin mark paid until Paystack webhook in a later phase) → **`packing`** → **`in_transit`** → **`delivered`**.
 
@@ -40,7 +42,7 @@ No auth. Server loads active products, resolves **variant + size + unit** prices
 }
 ```
 
-**201** — full order document (`items` include `productTitle`, `unitPriceKobo`, `lineTotalKobo`, optional `piecesPerBundle`; `statusHistory` starts with `pending_payment`; `orderType` is `shop`).
+**201** — full order document (`items` include `productTitle`, `unitPriceKobo`, `lineTotalKobo`, optional `piecesPerBundle`; `subtotalAmountKobo`, `deliveryFeeKobo`, `totalAmountKobo`; `statusHistory` starts with `pending_payment`; `orderType` is `shop`).
 
 **400** — validation (inactive product, bad variant/size/unit, cleaning with size, mats without size, etc.).
 

@@ -18,7 +18,7 @@ Free-text labels (same idea as the old “colors” field). Each variant needs a
 
 ## Pricing
 
-Delivery is **not** a product field. Storefront copy is fixed: *1–3 business days (Mon–Sat)*.
+Delivery timeline is **not** a product field. Storefront copy is fixed: *1–3 business days (Mon–Sat)*. Order-level delivery **fee** (₦2,000 for piece-only carts; free with any bundle/dozen) is computed at checkout — see [orders.md](./orders.md).
 
 ### Mats / rugs (`foot_mats`, `door_mats`, `center_mats`, `rugs`)
 
@@ -52,7 +52,7 @@ Amounts are **kobo**: ₦5,000 → `500000`.
 
 - Header: `Authorization: Bearer <token>`
 - Body: `multipart/form-data` with field **`file`**
-- Allowed: JPEG, PNG, WebP, GIF (max **5MB**)
+- Allowed: JPEG, PNG, WebP, GIF (max **1MB**)
 - Response: `{ "url": "https://..." }`
 
 Add returned URLs to `variantImages` on create/update.

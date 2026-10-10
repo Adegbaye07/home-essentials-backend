@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 
 	"homeessentials/backend/internal/model"
+	"homeessentials/backend/internal/pricing"
 )
 
 func TestBuildOrderItems_pieceAndBundle(t *testing.T) {
@@ -47,6 +48,76 @@ func TestBuildOrderItems_pieceAndBundle(t *testing.T) {
 	}
 	if items[1].PiecesPerBundle != 10 {
 		t.Fatalf("piecesPerBundle = %d", items[1].PiecesPerBundle)
+	}
+}
+
+func TestDeliveryFeeOnCreateAmounts_pieceOnly(t *testing.T) {
+	pid := primitive.NewObjectID()
+	products := map[primitive.ObjectID]model.Product{
+		pid: {
+			ID:       pid,
+			Title:    "Door mat",
+			Category: model.CategoryDoorMats,
+			Active:   true,
+			Variants: []string{"brown"},
+			VariantImages: []model.VariantImage{
+				{Variant: "brown", ImageURL: "https://example.com/brown.jpg"},
+			},
+			SizePricings: []model.SizePricing{
+				{Size: "2 x 3 ft", PiecePriceKobo: 1500000, BundlePriceKobo: 12000000, PiecesPerBundle: 10},
+			},
+		},
+	}
+
+	items, subtotal, err := buildOrderItems(products, []OrderLineInput{
+		{ProductID: pid, Variant: "brown", Size: "2 x 3 ft", Unit: model.OrderUnitPiece, Quantity: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fee := pricing.DeliveryFeeKobo(items)
+	if subtotal != 1500000 {
+		t.Fatalf("subtotal = %d", subtotal)
+	}
+	if fee != pricing.DeliveryFeePieceOnlyKobo {
+		t.Fatalf("fee = %d want %d", fee, pricing.DeliveryFeePieceOnlyKobo)
+	}
+	if subtotal+fee != 1700000 {
+		t.Fatalf("total = %d", subtotal+fee)
+	}
+}
+
+func TestDeliveryFeeOnCreateAmounts_bundleWaives(t *testing.T) {
+	pid := primitive.NewObjectID()
+	products := map[primitive.ObjectID]model.Product{
+		pid: {
+			ID:       pid,
+			Title:    "Door mat",
+			Category: model.CategoryDoorMats,
+			Active:   true,
+			Variants: []string{"brown"},
+			VariantImages: []model.VariantImage{
+				{Variant: "brown", ImageURL: "https://example.com/brown.jpg"},
+			},
+			SizePricings: []model.SizePricing{
+				{Size: "2 x 3 ft", PiecePriceKobo: 1500000, BundlePriceKobo: 12000000, PiecesPerBundle: 10},
+			},
+		},
+	}
+
+	items, subtotal, err := buildOrderItems(products, []OrderLineInput{
+		{ProductID: pid, Variant: "brown", Size: "2 x 3 ft", Unit: model.OrderUnitPiece, Quantity: 1},
+		{ProductID: pid, Variant: "brown", Size: "2 x 3 ft", Unit: model.OrderUnitBundle, Quantity: 1},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fee := pricing.DeliveryFeeKobo(items)
+	if fee != 0 {
+		t.Fatalf("fee = %d want 0", fee)
+	}
+	if subtotal+fee != subtotal {
+		t.Fatalf("total should equal subtotal")
 	}
 }
 

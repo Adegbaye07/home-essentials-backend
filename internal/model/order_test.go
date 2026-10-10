@@ -48,6 +48,38 @@ func TestNormalizeOrder_defaultsTypeToShop(t *testing.T) {
 	}
 }
 
+func TestNormalizeOrder_legacyAmountBreakdown(t *testing.T) {
+	o := &Order{
+		Status:          OrderStatusPaid,
+		TotalAmountKobo: 5000,
+		Items: []OrderItem{
+			{LineTotalKobo: 2000},
+			{LineTotalKobo: 3000},
+		},
+	}
+	NormalizeOrder(o)
+	if o.SubtotalAmountKobo != 5000 {
+		t.Fatalf("subtotal = %d want 5000", o.SubtotalAmountKobo)
+	}
+	if o.DeliveryFeeKobo != 0 {
+		t.Fatalf("delivery = %d want 0 (legacy paid item sum only)", o.DeliveryFeeKobo)
+	}
+}
+
+func TestNormalizeOrder_preservesStoredBreakdown(t *testing.T) {
+	o := &Order{
+		Status:             OrderStatusPaid,
+		SubtotalAmountKobo: 5000,
+		DeliveryFeeKobo:    200_000,
+		TotalAmountKobo:    205_000,
+		Items:              []OrderItem{{LineTotalKobo: 5000}},
+	}
+	NormalizeOrder(o)
+	if o.SubtotalAmountKobo != 5000 || o.DeliveryFeeKobo != 200_000 {
+		t.Fatalf("got subtotal=%d fee=%d", o.SubtotalAmountKobo, o.DeliveryFeeKobo)
+	}
+}
+
 func TestNormalizeOrder_preservesCustomLegacy(t *testing.T) {
 	o := &Order{OrderType: OrderTypeCustom, Status: OrderStatusCreated}
 	NormalizeOrder(o)

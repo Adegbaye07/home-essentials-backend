@@ -9,6 +9,8 @@ import (
 
 // TotalsBlockData feeds the totals-block partial.
 type TotalsBlockData struct {
+	Subtotal  string
+	Delivery  string
 	TotalPaid string
 }
 
@@ -50,7 +52,14 @@ func lineItemsFromOrder(order *model.Order) []LineItemRow {
 }
 
 func totalsFromOrder(order *model.Order) TotalsBlockData {
+	model.NormalizeOrder(order)
+	delivery := "Free"
+	if order.DeliveryFeeKobo > 0 {
+		delivery = FormatNGN(order.DeliveryFeeKobo)
+	}
 	return TotalsBlockData{
+		Subtotal:  FormatNGN(order.SubtotalAmountKobo),
+		Delivery:  delivery,
 		TotalPaid: FormatNGN(order.TotalAmountKobo),
 	}
 }
@@ -73,9 +82,11 @@ func OrderCustomerConfirmedEmail(order *model.Order, trackPageURL string) (subje
 	}
 	t := totalsFromOrder(order)
 	plain = fmt.Sprintf(
-		"%s\n\nThank you for your Home Essentials by Kamgol order.\n\nTracking: %s\nTotal: %s\n\nTrack: %s\n",
+		"%s\n\nThank you for your Home Essentials by Kamgol order.\n\nTracking: %s\nSubtotal: %s\nDelivery: %s\nTotal: %s\n\nTrack: %s\n",
 		greetingLine(order.Customer.Name),
 		order.TrackingNumber,
+		t.Subtotal,
+		t.Delivery,
 		t.TotalPaid,
 		trackPageURL,
 	)
@@ -109,11 +120,13 @@ func OrderAdminPaidEmail(order *model.Order) (subject, html, plain string, err e
 		who = who + " (" + order.Customer.Email + ")"
 	}
 	plain = fmt.Sprintf(
-		"New paid order %s\nCustomer: %s (%s)\nAddress: %s\nTotal: %s\nTracking: %s\n",
+		"New paid order %s\nCustomer: %s (%s)\nAddress: %s\nSubtotal: %s\nDelivery: %s\nTotal: %s\nTracking: %s\n",
 		order.ID.Hex(),
 		who,
 		order.Customer.Phone,
 		order.Customer.DeliveryAddress,
+		t.Subtotal,
+		t.Delivery,
 		t.TotalPaid,
 		order.TrackingNumber,
 	)

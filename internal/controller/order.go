@@ -103,20 +103,23 @@ func (c *OrderController) Create(ctx context.Context, in CreateOrderInput) (*mod
 		return nil, fmt.Errorf("load products: %w", err)
 	}
 
-	items, total, err := buildOrderItems(productsByID, in.Items)
+	items, subtotal, err := buildOrderItems(productsByID, in.Items)
 	if err != nil {
 		return nil, err
 	}
+	deliveryFee := pricing.DeliveryFeeKobo(items)
 
 	placedAt := time.Now().UTC()
 	order := &model.Order{
-		OrderType:         model.OrderTypeShop,
-		Items:             items,
-		Customer:          normalizeCustomer(in.Customer),
-		Status:            model.OrderStatusPendingPayment,
-		StatusHistory:     []model.StatusHistoryEntry{{Status: model.OrderStatusPendingPayment, At: placedAt}},
-		TotalAmountKobo:   total,
-		PaystackReference: newPaystackReference(),
+		OrderType:          model.OrderTypeShop,
+		Items:              items,
+		Customer:           normalizeCustomer(in.Customer),
+		Status:             model.OrderStatusPendingPayment,
+		StatusHistory:      []model.StatusHistoryEntry{{Status: model.OrderStatusPendingPayment, At: placedAt}},
+		SubtotalAmountKobo: subtotal,
+		DeliveryFeeKobo:    deliveryFee,
+		TotalAmountKobo:    subtotal + deliveryFee,
+		PaystackReference:  newPaystackReference(),
 	}
 
 	if err := c.orders.Create(ctx, order); err != nil {

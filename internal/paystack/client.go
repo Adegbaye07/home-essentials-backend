@@ -36,9 +36,9 @@ type apiResponse struct {
 }
 
 type InitializeResult struct {
-	AccessCode        string
-	AuthorizationURL  string
-	Reference         string
+	AccessCode       string
+	AuthorizationURL string
+	Reference        string
 }
 
 func (c *Client) InitializeTransaction(ctx context.Context, email string, amountKobo int64, reference string) (InitializeResult, error) {

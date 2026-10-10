@@ -13,7 +13,7 @@ import (
 )
 
 const (
-	maxImageUploadBytes = 5 << 20
+	maxImageUploadBytes = 1 << 20
 	maxVideoUploadBytes = 5 << 20
 )
 

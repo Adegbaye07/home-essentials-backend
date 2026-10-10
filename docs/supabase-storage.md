@@ -34,7 +34,7 @@ supabase storage enabled bucket=product-images
   - Images → product `variantImages[].imageUrl`
   - Videos → product `videoUrl` (optional authenticity clip)
 
-Allowed image types: JPEG, PNG, WebP, GIF (max **5MB**).  
+Allowed image types: JPEG, PNG, WebP, GIF (max **1MB**).  
 Allowed video types: MP4, WebM, MOV (max **5MB**).
 
 If env vars are missing, the routes still exist but return **503** `upload service not configured`.

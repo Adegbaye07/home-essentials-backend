@@ -164,6 +164,22 @@ func NormalizeOrder(o *Order) {
 	for i := range o.StatusHistory {
 		o.StatusHistory[i].Status = o.StatusHistory[i].Status.Normalized()
 	}
+	ensureOrderAmountBreakdown(o)
+}
+
+// ensureOrderAmountBreakdown fills subtotal/delivery for legacy orders that
+// only stored totalAmountKobo (item sum). New orders always persist both fields.
+func ensureOrderAmountBreakdown(o *Order) {
+	if o.SubtotalAmountKobo > 0 || len(o.Items) == 0 {
+		return
+	}
+	var sub int64
+	for _, it := range o.Items {
+		sub += it.LineTotalKobo
+	}
+	o.SubtotalAmountKobo = sub
+	fee := max(o.TotalAmountKobo-sub, 0)
+	o.DeliveryFeeKobo = fee
 }
 
 // MayAbandon reports whether payment abandon is allowed (shop checkout cancel only).
@@ -216,19 +232,21 @@ type OrderNotifications struct {
 }
 
 type Order struct {
-	ID                primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
-	OrderType         OrderType            `bson:"orderType,omitempty" json:"orderType"`
-	Items             []OrderItem          `bson:"items" json:"items"`
-	Custom            *CustomRequest       `bson:"custom,omitempty" json:"custom,omitempty"`
-	Customer          CustomerInfo         `bson:"customer" json:"customer"`
-	Status            OrderStatus          `bson:"status" json:"status"`
-	StatusHistory     []StatusHistoryEntry `bson:"statusHistory" json:"statusHistory"`
-	TotalAmountKobo   int64                `bson:"totalAmountKobo" json:"totalAmountKobo"`
-	PaystackReference string               `bson:"paystackReference" json:"paystackReference"`
-	TrackingNumber    string               `bson:"trackingNumber,omitempty" json:"trackingNumber,omitempty"`
-	PaidAt            *time.Time           `bson:"paidAt,omitempty" json:"paidAt,omitempty"`
-	AbandonedAt       *time.Time           `bson:"abandonedAt,omitempty" json:"abandonedAt,omitempty"`
-	Notifications     OrderNotifications   `bson:"notifications" json:"notifications"`
-	CreatedAt         time.Time            `bson:"createdAt" json:"createdAt"`
-	UpdatedAt         time.Time            `bson:"updatedAt" json:"updatedAt"`
+	ID                 primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
+	OrderType          OrderType            `bson:"orderType,omitempty" json:"orderType"`
+	Items              []OrderItem          `bson:"items" json:"items"`
+	Custom             *CustomRequest       `bson:"custom,omitempty" json:"custom,omitempty"`
+	Customer           CustomerInfo         `bson:"customer" json:"customer"`
+	Status             OrderStatus          `bson:"status" json:"status"`
+	StatusHistory      []StatusHistoryEntry `bson:"statusHistory" json:"statusHistory"`
+	SubtotalAmountKobo int64                `bson:"subtotalAmountKobo,omitempty" json:"subtotalAmountKobo"`
+	DeliveryFeeKobo    int64                `bson:"deliveryFeeKobo,omitempty" json:"deliveryFeeKobo"`
+	TotalAmountKobo    int64                `bson:"totalAmountKobo" json:"totalAmountKobo"`
+	PaystackReference  string               `bson:"paystackReference" json:"paystackReference"`
+	TrackingNumber     string               `bson:"trackingNumber,omitempty" json:"trackingNumber,omitempty"`
+	PaidAt             *time.Time           `bson:"paidAt,omitempty" json:"paidAt,omitempty"`
+	AbandonedAt        *time.Time           `bson:"abandonedAt,omitempty" json:"abandonedAt,omitempty"`
+	Notifications      OrderNotifications   `bson:"notifications" json:"notifications"`
+	CreatedAt          time.Time            `bson:"createdAt" json:"createdAt"`
+	UpdatedAt          time.Time            `bson:"updatedAt" json:"updatedAt"`
 }

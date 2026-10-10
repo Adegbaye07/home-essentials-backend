@@ -319,11 +319,13 @@ type TrackOrderInput struct {
 }
 
 type TrackOrderView struct {
-	TrackingNumber  string                     `json:"trackingNumber"`
-	Status          model.OrderStatus          `json:"status"`
-	StatusHistory   []model.StatusHistoryEntry `json:"statusHistory"`
-	TotalAmountKobo int64                      `json:"totalAmountKobo"`
-	Items           []model.OrderItem          `json:"items"`
+	TrackingNumber     string                     `json:"trackingNumber"`
+	Status             model.OrderStatus          `json:"status"`
+	StatusHistory      []model.StatusHistoryEntry `json:"statusHistory"`
+	SubtotalAmountKobo int64                      `json:"subtotalAmountKobo"`
+	DeliveryFeeKobo    int64                      `json:"deliveryFeeKobo"`
+	TotalAmountKobo    int64                      `json:"totalAmountKobo"`
+	Items              []model.OrderItem          `json:"items"`
 }
 
 func (c *PaymentController) Track(ctx context.Context, in TrackOrderInput) (TrackOrderView, error) {
@@ -340,10 +342,12 @@ func (c *PaymentController) Track(ctx context.Context, in TrackOrderInput) (Trac
 	model.NormalizeOrder(order)
 
 	return TrackOrderView{
-		TrackingNumber:  order.TrackingNumber,
-		Status:          order.Status,
-		StatusHistory:   order.StatusHistory,
-		TotalAmountKobo: order.TotalAmountKobo,
-		Items:           order.Items,
+		TrackingNumber:     order.TrackingNumber,
+		Status:             order.Status,
+		StatusHistory:      order.StatusHistory,
+		SubtotalAmountKobo: order.SubtotalAmountKobo,
+		DeliveryFeeKobo:    order.DeliveryFeeKobo,
+		TotalAmountKobo:    order.TotalAmountKobo,
+		Items:              order.Items,
 	}, nil
 }
