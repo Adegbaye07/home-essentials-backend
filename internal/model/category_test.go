@@ -10,6 +10,7 @@ func TestParseCategory_homeEssentials(t *testing.T) {
 		{"foot_mats", CategoryFootMats},
 		{"door_mats", CategoryDoorMats},
 		{"center_mats", CategoryCenterMats},
+		{"bath_mats", CategoryBathMats},
 		{"rugs", CategoryRugs},
 		{"cleaning_essentials", CategoryCleaningEssentials},
 	}
@@ -37,5 +38,8 @@ func TestCategory_IsCleaning(t *testing.T) {
 	}
 	if CategoryRugs.IsCleaning() {
 		t.Fatal("rugs should not be cleaning")
+	}
+	if CategoryBathMats.IsCleaning() {
+		t.Fatal("bath mats should not be cleaning")
 	}
 }

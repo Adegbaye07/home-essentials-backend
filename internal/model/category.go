@@ -8,13 +8,14 @@ const (
 	CategoryFootMats           Category = "foot_mats"
 	CategoryDoorMats           Category = "door_mats"
 	CategoryCenterMats         Category = "center_mats"
+	CategoryBathMats           Category = "bath_mats"
 	CategoryRugs               Category = "rugs"
 	CategoryCleaningEssentials Category = "cleaning_essentials"
 )
 
 func (c Category) Valid() bool {
 	switch c {
-	case CategoryFootMats, CategoryDoorMats, CategoryCenterMats, CategoryRugs, CategoryCleaningEssentials:
+	case CategoryFootMats, CategoryDoorMats, CategoryCenterMats, CategoryBathMats, CategoryRugs, CategoryCleaningEssentials:
 		return true
 	default:
 		return false

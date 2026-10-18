@@ -34,6 +34,19 @@ func TestValidateProductPricing_cleaningRejectsSizes(t *testing.T) {
 	}
 }
 
+func TestValidateProductPricing_bathMats(t *testing.T) {
+	err := ValidateProductPricing(model.CategoryBathMats, []model.SizePricing{
+		{Size: "50cm x 80cm", PiecePriceKobo: 400000, BundlePriceKobo: 3600000, PiecesPerBundle: 10},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ValidateProductPricing(model.CategoryBathMats, nil, nil)
+	if err == nil {
+		t.Fatal("expected size pricing to be required for bath mats")
+	}
+}
+
 func TestValidateProductPricing_matsRejectCleaning(t *testing.T) {
 	err := ValidateProductPricing(model.CategoryFootMats, []model.SizePricing{
 		{Size: "60cm", PiecePriceKobo: 1, BundlePriceKobo: 1, PiecesPerBundle: 2},

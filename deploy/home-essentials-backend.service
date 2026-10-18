@@ -8,7 +8,7 @@ Type=simple
 User=root
 WorkingDirectory=/root//home-essentials-backend
 EnvironmentFile=-/root/home-essentials-backend/.env
-ExecStart=/root/home-essentials-backend//home-essentials-backend
+ExecStart=/root/home-essentials-backend/home-essentials-backend
 Restart=always
 
 [Install]
