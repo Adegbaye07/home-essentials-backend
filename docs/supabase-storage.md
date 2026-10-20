@@ -1,6 +1,6 @@
-# Supabase Storage (product images & videos)
+# Supabase Storage (product images, videos & custom samples)
 
-The API uploads product images and authenticity videos server-side using the **service role** key. Never put Supabase secrets in the admin or client apps.
+The API uploads product images, authenticity videos, and custom-order sample images server-side using the **service role** key. Never put Supabase secrets in the admin or client apps.
 
 ## Dashboard setup
 
@@ -27,14 +27,14 @@ supabase storage enabled bucket=product-images
 
 ## Upload flow
 
-- Images: Admin UI → `POST /api/v1/admin/uploads` (JWT, multipart field `file`)
-- Videos: Admin UI → `POST /api/v1/admin/uploads/video` (JWT, multipart field `file`)
-- API stores objects under `products/{uuid}.{ext}` via [storage-go](https://github.com/supabase-community/storage-go)
-- Response: `{ "url": "<public-url>" }`
+- Images: Admin UI → `POST /api/v1/admin/uploads` (JWT, multipart field `file`) → `products/{uuid}.{ext}`
+- Videos: Admin UI → `POST /api/v1/admin/uploads/video` (JWT, multipart field `file`) → `products/{uuid}.{ext}`
+- Custom samples: Public `POST /api/v1/orders/custom` (multipart field `sampleImage`) → `recreate/{uuid}.{ext}`
+- Response for admin uploads: `{ "url": "<public-url>" }`
   - Images → product `variantImages[].imageUrl`
   - Videos → product `videoUrl` (optional authenticity clip)
 
-Allowed image types: JPEG, PNG, WebP, GIF (max **1MB**).  
+Allowed image types: JPEG, PNG, WebP, GIF (admin product images max **1MB**; Custom samples max **5MB**).  
 Allowed video types: MP4, WebM, MOV (max **5MB**).
 
 If env vars are missing, the routes still exist but return **503** `upload service not configured`.

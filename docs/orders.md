@@ -1,14 +1,20 @@
-# Orders API (Phase 3)
+# Orders API
 
-Shop checkout only. Amounts are **kobo** (`subtotalAmountKobo`, `deliveryFeeKobo`, `totalAmountKobo`, line fields).
+Amounts are **kobo** (`subtotalAmountKobo`, `deliveryFeeKobo`, `totalAmountKobo`, line fields).
+
+## Shop orders
 
 **Delivery fee:** ₦2,000 (`200000` kobo) once per order when **every** line is `piece`. Free when any line is `bundle` or `dozen`. `totalAmountKobo` = subtotal + delivery fee (Paystack charges this total).
 
-**Statuses:** `pending_payment` (on create) → **`paid`** (admin mark paid until Paystack webhook in a later phase) → **`packing`** → **`in_transit`** → **`delivered`**.
+**Statuses:** `pending_payment` (on create) → **`paid`** (Paystack webhook / verify, or admin mark paid) → **`packing`** → **`in_transit`** → **`delivered`**.
 
-Customers may abandon unpaid checkouts (`abandoned`); those can be deleted by admin. There is no custom/recreate order flow.
+Customers may abandon unpaid shop checkouts (`abandoned`); those can be deleted by admin.
 
-Admin PATCH enforces allowed transitions (from `pending_payment` only to `paid`).
+Admin PATCH enforces allowed transitions (from `pending_payment` only to `paid` among payment statuses).
+
+## Custom (custom mat) orders
+
+Public multipart create → status **`created`**. Admin **accept** with `amountKobo` (full charge including delivery; immutable after accept) → **`pending_payment`** + Paystack payment-link email. Admin **reject** with reason → **`rejected`** + status email. **Resend payment link** while `pending_payment` (same amount). After payment, webhook marks **`paid`** and sends the usual customer + admin paid emails.
 
 ## Create order (public)
 
@@ -46,15 +52,35 @@ No auth. Server loads active products, resolves **variant + size + unit** prices
 
 **400** — validation (inactive product, bad variant/size/unit, cleaning with size, mats without size, etc.).
 
+## Create custom order (public)
+
+`POST /api/v1/orders/custom`
+
+No auth. **multipart/form-data** fields:
+
+| Field | Required | Notes |
+|-------|----------|--------|
+| `title` | yes | Short request title |
+| `quantity` | yes | Integer ≥ 1 |
+| `name`, `email`, `phone`, `deliveryAddress` | yes | Customer contact |
+| `sampleImage` | yes | JPEG/PNG/WebP/GIF, max 5MB; stored under `recreate/` |
+
+**201** — order with `orderType: custom`, `status: created`, `trackingNumber`, `custom.title` / `quantity` / `sampleImageUrl`, empty `items`, totals `0` until accept. Customer + admin acknowledgement emails when SMTP is configured.
+
+**400** / **502** / **503** — validation, upload failure, or storage not configured.
+
 ## Admin orders
 
 Requires JWT (`Authorization: Bearer <token>`).
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/v1/admin/orders` | List newest first. Query: `status` (optional), `page` (default 1), `page_size` (default 20, max 100) |
+| GET | `/api/v1/admin/orders` | List newest first. Query: `status`, `orderType` (`shop` \| `custom`), `page`, `page_size` |
 | GET | `/api/v1/admin/orders/:id` | Order detail |
-| PATCH | `/api/v1/admin/orders/:id/status` | Update status; appends `statusHistory`; sets `trackingNumber` (`KAM-…`) when moving to `paid` |
+| PATCH | `/api/v1/admin/orders/:id/status` | Update fulfillment status; appends `statusHistory` |
+| POST | `/api/v1/admin/orders/:id/accept` | Custom only: `{ "amountKobo" }` → `pending_payment` + payment-link email |
+| POST | `/api/v1/admin/orders/:id/reject` | Custom only: `{ "reason" }` → `rejected` + email |
+| POST | `/api/v1/admin/orders/:id/resend-payment-link` | Custom `pending_payment` only; same amount |
 | DELETE | `/api/v1/admin/orders/:id` | Hard-delete **`abandoned`** orders only (**400** otherwise) |
 
 **200** list response — same paginated shape as products:
@@ -75,7 +101,7 @@ Requires JWT (`Authorization: Bearer <token>`).
 }
 ```
 
-List filter `status` values: `pending_payment`, `abandoned`, `paid`, `packing`, `in_transit`, `delivered` (plus legacy `created` / `rejected` if any remain in the DB).
+List filter `status` values: `created`, `pending_payment`, `abandoned`, `rejected`, `paid`, `packing`, `in_transit`, `delivered`.
 
 ### Update status
 

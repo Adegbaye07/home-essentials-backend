@@ -67,6 +67,134 @@ func (h *OrderHandler) CreatePublic(c *gin.Context) {
 	c.JSON(http.StatusCreated, order)
 }
 
+const maxCustomOrderUploadBytes = 5 << 20
+
+func (h *OrderHandler) CreateCustomPublic(c *gin.Context) {
+	if err := c.Request.ParseMultipartForm(maxCustomOrderUploadBytes); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid multipart form"})
+		return
+	}
+
+	in, err := customOrderFormToInput(c)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	file, header, err := c.Request.FormFile("sampleImage")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sampleImage file is required"})
+		return
+	}
+	defer file.Close()
+
+	contentType := header.Header.Get("Content-Type")
+	order, err := h.ctrl.CreateCustom(c.Request.Context(), in, controller.CustomSampleImage{
+		Filename:    header.Filename,
+		ContentType: contentType,
+		Reader:      file,
+	})
+	if err != nil {
+		writeOrderError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusCreated, order)
+}
+
+func customOrderFormToInput(c *gin.Context) (controller.CreateCustomOrderInput, error) {
+	qtyRaw := strings.TrimSpace(c.PostForm("quantity"))
+	qty, err := strconv.Atoi(qtyRaw)
+	if err != nil {
+		return controller.CreateCustomOrderInput{}, errors.New("quantity must be a number")
+	}
+
+	return controller.CreateCustomOrderInput{
+		Customer: controller.CustomerInput{
+			Name:            c.PostForm("name"),
+			Email:           c.PostForm("email"),
+			Phone:           c.PostForm("phone"),
+			DeliveryAddress: c.PostForm("deliveryAddress"),
+		},
+		Custom: controller.CustomRequestInput{
+			Title:    c.PostForm("title"),
+			Quantity: qty,
+		},
+	}, nil
+}
+
+type acceptCustomOrderRequest struct {
+	AmountKobo int64 `json:"amountKobo"`
+}
+
+func (h *OrderHandler) AcceptCustomAdmin(c *gin.Context) {
+	id, err := parseObjectID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	var req acceptCustomOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	out, err := h.ctrl.AcceptCustom(c.Request.Context(), id, controller.AcceptCustomOrderInput{
+		AmountKobo: req.AmountKobo,
+	})
+	if err != nil {
+		writeOrderError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, out)
+}
+
+type rejectCustomOrderRequest struct {
+	Reason string `json:"reason"`
+}
+
+func (h *OrderHandler) RejectCustomAdmin(c *gin.Context) {
+	id, err := parseObjectID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	var req rejectCustomOrderRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body"})
+		return
+	}
+
+	order, err := h.ctrl.RejectCustom(c.Request.Context(), id, controller.RejectCustomOrderInput{
+		Reason: req.Reason,
+	})
+	if err != nil {
+		writeOrderError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, order)
+}
+
+func (h *OrderHandler) ResendPaymentLinkAdmin(c *gin.Context) {
+	id, err := parseObjectID(c.Param("id"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid order id"})
+		return
+	}
+
+	out, err := h.ctrl.ResendCustomPaymentLink(c.Request.Context(), id)
+	if err != nil {
+		writeOrderError(c, err)
+		return
+	}
+
+	c.JSON(http.StatusOK, out)
+}
+
 func (h *OrderHandler) GetAdmin(c *gin.Context) {
 	id, err := parseObjectID(c.Param("id"))
 	if err != nil {
@@ -219,6 +347,18 @@ func writeOrderError(c *gin.Context, err error) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
+	if controller.IsCustomOrderConflict(err) || controller.IsNotCustomOrder(err) {
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+		return
+	}
+	if errors.Is(err, controller.ErrUploadNotConfigured) || errors.Is(err, controller.ErrPaystackNotConfigured) {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": err.Error()})
+		return
+	}
+	if errors.Is(err, controller.ErrInvalidImageType) {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid image type"})
+		return
+	}
 
 	if errors.Is(err, pricing.ErrNoPriceForUnit) || errors.Is(err, pricing.ErrInvalidPricing) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -226,6 +366,16 @@ func writeOrderError(c *gin.Context, err error) {
 	}
 
 	msg := err.Error()
+	if strings.Contains(msg, "upload sample image") {
+		slog.Error("custom order sample upload failed", "err", err)
+		c.JSON(http.StatusBadGateway, gin.H{"error": "failed to upload sample image"})
+		return
+	}
+	if strings.Contains(msg, "create custom order") {
+		slog.Error("custom order create failed", "err", err)
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "order request failed"})
+		return
+	}
 	if strings.Contains(msg, "product not found") ||
 		strings.Contains(msg, "not available") ||
 		strings.Contains(msg, "required") ||
@@ -233,8 +383,11 @@ func writeOrderError(c *gin.Context, err error) {
 		strings.Contains(msg, "cannot change status") ||
 		strings.Contains(msg, "already") ||
 		strings.Contains(msg, "quantity") ||
+		strings.Contains(msg, "amountKobo") ||
 		strings.Contains(msg, "must be") ||
-		strings.Contains(msg, "at least") {
+		strings.Contains(msg, "at least") ||
+		strings.Contains(msg, "reason") ||
+		strings.Contains(msg, "paystack") {
 		c.JSON(http.StatusBadRequest, gin.H{"error": msg})
 		return
 	}

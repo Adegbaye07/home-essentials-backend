@@ -1,0 +1,41 @@
+{{define "order-custom-admin-notify"}}
+{{template "shell-start" .}}
+        <p style="margin: 0 0 16px 0; font-size: 14px; line-height: 24px; color: #44403c;">
+          A customer submitted a new custom mat request.
+        </p>
+        <p style="margin: 0 0 8px 0; font-size: 14px; color: #1c1917;"><strong>Tracking ID:</strong> {{.TrackingNumber}}</p>
+        <table width="100%" cellpadding="0" cellspacing="0" role="presentation" style="border-collapse: collapse; margin: 16px 0 20px 0; font-size: 14px;">
+          <tr>
+            <td style="padding: 10px 12px; background: #faf6ef; border: 1px solid #e8e4df; color: #57534e; width: 40%;">Title</td>
+            <td style="padding: 10px 12px; border: 1px solid #e8e4df; color: #1c1917;">{{.Title}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 12px; background: #faf6ef; border: 1px solid #e8e4df; color: #57534e;">Quantity</td>
+            <td style="padding: 10px 12px; border: 1px solid #e8e4df; color: #1c1917;">{{.Quantity}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 12px; background: #faf6ef; border: 1px solid #e8e4df; color: #57534e;">Customer</td>
+            <td style="padding: 10px 12px; border: 1px solid #e8e4df; color: #1c1917;">{{.CustomerName}} &lt;{{.CustomerEmail}}&gt;</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 12px; background: #faf6ef; border: 1px solid #e8e4df; color: #57534e;">Phone</td>
+            <td style="padding: 10px 12px; border: 1px solid #e8e4df; color: #1c1917;">{{.CustomerPhone}}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px 12px; background: #faf6ef; border: 1px solid #e8e4df; color: #57534e; vertical-align: top;">Address</td>
+            <td style="padding: 10px 12px; border: 1px solid #e8e4df; color: #1c1917;">{{.DeliveryAddress}}</td>
+          </tr>
+          {{if .SampleImageURL}}
+          <tr>
+            <td style="padding: 10px 12px; background: #faf6ef; border: 1px solid #e8e4df; color: #57534e;">Sample</td>
+            <td style="padding: 10px 12px; border: 1px solid #e8e4df; color: #1c1917; word-break: break-all;">
+              <a href="{{.SampleImageURL}}" style="color: #AE7820;">View sample image</a>
+            </td>
+          </tr>
+          {{end}}
+        </table>
+        <p style="margin: 0; font-size: 14px; line-height: 24px; color: #44403c;">
+          Open the order in admin to accept with a price (includes delivery) or reject with a reason.
+        </p>
+{{template "shell-end" .}}
+{{end}}

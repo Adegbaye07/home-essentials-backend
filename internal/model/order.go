@@ -12,8 +12,7 @@ import (
 type OrderType string
 
 const (
-	OrderTypeShop OrderType = "shop"
-	// OrderTypeCustom is retained for reading legacy Mongo documents only.
+	OrderTypeShop   OrderType = "shop"
 	OrderTypeCustom OrderType = "custom"
 )
 
@@ -108,7 +107,7 @@ func ParseOrderListFilterStatus(s string) (OrderStatus, error) {
 }
 
 // AdminSettable reports whether an admin generic PATCH may set an order to this status.
-// pending_payment / abandoned use payment flows; created / rejected are legacy custom-order only.
+// created / rejected / pending_payment / abandoned use dedicated flows (accept, reject, payment).
 func (s OrderStatus) AdminSettable() bool {
 	switch s.Normalized() {
 	case OrderStatusPaid, OrderStatusPacking, OrderStatusInTransit, OrderStatusDelivered:
@@ -118,8 +117,11 @@ func (s OrderStatus) AdminSettable() bool {
 	}
 }
 
-// AllowedAdminTransition reports whether an admin may move a shop order from current to next.
-func AllowedAdminTransition(current, next OrderStatus) bool {
+// AllowedAdminTransition reports whether an admin may move an order of the given type from current to next.
+// Accept (created → pending_payment) and reject (created → rejected) for custom orders are included
+// here so dedicated endpoints can share the same rules; generic PATCH still blocks non-AdminSettable targets.
+func AllowedAdminTransition(orderType OrderType, current, next OrderStatus) bool {
+	orderType = orderType.Normalized()
 	current = current.Normalized()
 	next = next.Normalized()
 	if !next.Valid() {
@@ -131,17 +133,28 @@ func AllowedAdminTransition(current, next OrderStatus) bool {
 	if current == OrderStatusDelivered || current == OrderStatusRejected {
 		return false
 	}
-	if next == OrderStatusAbandoned || next == OrderStatusCreated || next == OrderStatusRejected {
+	if next == OrderStatusAbandoned {
 		return false
 	}
-	if current == OrderStatusCreated || current == OrderStatusRejected {
-		return false
+	// Shop orders never use custom-only statuses.
+	if orderType != OrderTypeCustom {
+		if current == OrderStatusCreated || current == OrderStatusRejected {
+			return false
+		}
+		if next == OrderStatusCreated || next == OrderStatusRejected {
+			return false
+		}
 	}
-	return slices.Contains(adminNextStatuses(current), next)
+	return slices.Contains(adminNextStatuses(orderType, current), next)
 }
 
-func adminNextStatuses(current OrderStatus) []OrderStatus {
+func adminNextStatuses(orderType OrderType, current OrderStatus) []OrderStatus {
 	switch current {
+	case OrderStatusCreated:
+		if orderType == OrderTypeCustom {
+			return []OrderStatus{OrderStatusPendingPayment, OrderStatusRejected}
+		}
+		return nil
 	case OrderStatusPendingPayment:
 		return []OrderStatus{OrderStatusPaid}
 	case OrderStatusPaid:
@@ -153,6 +166,23 @@ func adminNextStatuses(current OrderStatus) []OrderStatus {
 	default:
 		return nil
 	}
+}
+
+// StatusChangeRequiresNote reports whether a transition must include a non-empty admin note.
+func StatusChangeRequiresNote(orderType OrderType, current, next OrderStatus) bool {
+	_ = current
+	return orderType.Normalized() == OrderTypeCustom && next.Normalized() == OrderStatusRejected
+}
+
+// ValidateStatusChangeNote returns an error when a required note is missing.
+func ValidateStatusChangeNote(orderType OrderType, current, next OrderStatus, note string) error {
+	if !StatusChangeRequiresNote(orderType, current, next) {
+		return nil
+	}
+	if strings.TrimSpace(note) == "" {
+		return fmt.Errorf("a reason is required when rejecting a custom order")
+	}
+	return nil
 }
 
 func NormalizeOrder(o *Order) {
@@ -190,14 +220,15 @@ func (o *Order) MayAbandon() bool {
 	return o.OrderType.Normalized() == OrderTypeShop && o.Status.Normalized() == OrderStatusPendingPayment
 }
 
-// CustomRequest holds legacy bespoke-order details (orderType=custom). Not created by this API.
+// CustomRequest holds custom mat-order details (orderType=custom).
+// New requests only set title, quantity, and sampleImageUrl; other fields remain for older documents.
 type CustomRequest struct {
 	Title            string   `bson:"title" json:"title"`
-	Description      string   `bson:"description" json:"description"`
-	Sizes            []string `bson:"sizes" json:"sizes"`
-	Colors           []string `bson:"colors" json:"colors"`
+	Description      string   `bson:"description,omitempty" json:"description,omitempty"`
+	Sizes            []string `bson:"sizes,omitempty" json:"sizes,omitempty"`
+	Colors           []string `bson:"colors,omitempty" json:"colors,omitempty"`
 	Quantity         int      `bson:"quantity" json:"quantity"`
-	OfferedTotalKobo int64    `bson:"offeredTotalKobo" json:"offeredTotalKobo"`
+	OfferedTotalKobo int64    `bson:"offeredTotalKobo,omitempty" json:"offeredTotalKobo,omitempty"`
 	SampleImageURL   string   `bson:"sampleImageUrl,omitempty" json:"sampleImageUrl,omitempty"`
 }
 

@@ -14,6 +14,7 @@ import (
 	"homeessentials/backend/internal/mail"
 	"homeessentials/backend/internal/model"
 	"homeessentials/backend/internal/pagination"
+	"homeessentials/backend/internal/paystack"
 	"homeessentials/backend/internal/pricing"
 	"homeessentials/backend/internal/repository"
 )
@@ -22,6 +23,11 @@ var ErrOrderDeleteNotAbandoned = errors.New("only abandoned orders may be delete
 
 func IsOrderDeleteNotAbandoned(err error) bool {
 	return errors.Is(err, ErrOrderDeleteNotAbandoned)
+}
+
+// PaymentLinker initializes Paystack hosted checkout sessions.
+type PaymentLinker interface {
+	InitializeTransaction(ctx context.Context, email string, amountKobo int64, reference string) (paystack.InitializeResult, error)
 }
 
 type OrderLineInput struct {
@@ -52,7 +58,10 @@ type UpdateOrderStatusInput struct {
 type OrderController struct {
 	orders          *repository.OrderRepository
 	products        *repository.ProductRepository
+	recreateImages  RecreateImageUploader
+	paystack        PaymentLinker
 	mail            *mail.Sender
+	adminEmail      string
 	log             *slog.Logger
 	clientPublicURL string
 }
@@ -60,14 +69,20 @@ type OrderController struct {
 func NewOrderController(
 	orders *repository.OrderRepository,
 	products *repository.ProductRepository,
+	recreateImages RecreateImageUploader,
+	ps PaymentLinker,
 	mailer *mail.Sender,
+	adminEmail string,
 	log *slog.Logger,
 	clientPublicURL string,
 ) *OrderController {
 	return &OrderController{
 		orders:          orders,
 		products:        products,
+		recreateImages:  recreateImages,
+		paystack:        ps,
 		mail:            mailer,
+		adminEmail:      strings.TrimSpace(adminEmail),
 		log:             log,
 		clientPublicURL: strings.TrimSuffix(clientPublicURL, "/"),
 	}
@@ -213,7 +228,7 @@ func (c *OrderController) UpdateStatus(ctx context.Context, id primitive.ObjectI
 	}
 	model.NormalizeOrder(order)
 
-	if !model.AllowedAdminTransition(order.Status, in.Status) {
+	if !model.AllowedAdminTransition(order.OrderType, order.Status, in.Status) {
 		return nil, fmt.Errorf("cannot change status from %s to %s", order.Status, in.Status)
 	}
 

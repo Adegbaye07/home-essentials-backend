@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"homeessentials/backend/internal/mail"
+	"homeessentials/backend/internal/model"
 )
 
 func TestRenderDemoIncludesBrandAndFooter(t *testing.T) {
@@ -39,5 +40,45 @@ func TestRenderDemoIncludesBrandAndFooter(t *testing.T) {
 		if !strings.Contains(html, want) {
 			t.Errorf("rendered HTML missing %q", want)
 		}
+	}
+}
+
+func TestOrderCustomEmailsRender(t *testing.T) {
+	order := &model.Order{
+		TrackingNumber:  "KAM-20260101-ABC123",
+		TotalAmountKobo: 2500000,
+		Customer: model.CustomerInfo{
+			Name: "Ada", Email: "a@b.com", Phone: "0800", DeliveryAddress: "Lagos",
+		},
+		Custom: &model.CustomRequest{
+			Title: "Hallway mat", Quantity: 2, SampleImageURL: "https://example.com/s.jpg",
+		},
+	}
+
+	_, html, _, err := mail.OrderCustomCreatedEmail(order, "https://shop.example/track")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(html, "Hallway mat") ||
+		!strings.Contains(html, "KAM-20260101-ABC123") ||
+		!strings.Contains(html, "View sample image") ||
+		!strings.Contains(html, "https://example.com/s.jpg") {
+		t.Fatalf("created email missing fields: %s", html)
+	}
+
+	_, adminHTML, _, err := mail.OrderCustomAdminNotifyEmail(order)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(adminHTML, "a@b.com") || !strings.Contains(adminHTML, "View sample") {
+		t.Fatalf("admin notify missing fields: %s", adminHTML)
+	}
+
+	_, payHTML, _, err := mail.OrderCustomPaymentLinkEmail(order, "https://checkout.paystack.com/x", "https://shop.example/track", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(payHTML, "Pay now") || !strings.Contains(payHTML, "includes delivery") {
+		t.Fatalf("payment link email missing fields: %s", payHTML)
 	}
 }

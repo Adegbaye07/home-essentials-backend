@@ -24,10 +24,40 @@ func TestAllowedAdminTransition_shop(t *testing.T) {
 	}
 
 	for _, tc := range tests {
-		got := AllowedAdminTransition(tc.from, tc.to)
+		got := AllowedAdminTransition(OrderTypeShop, tc.from, tc.to)
 		if got != tc.want {
 			t.Fatalf("%s -> %s: got %v want %v", tc.from, tc.to, got, tc.want)
 		}
+	}
+}
+
+func TestAllowedAdminTransition_custom(t *testing.T) {
+	if !AllowedAdminTransition(OrderTypeCustom, OrderStatusCreated, OrderStatusPendingPayment) {
+		t.Fatal("custom accept transition missing")
+	}
+	if !AllowedAdminTransition(OrderTypeCustom, OrderStatusCreated, OrderStatusRejected) {
+		t.Fatal("custom reject transition missing")
+	}
+	if AllowedAdminTransition(OrderTypeShop, OrderStatusCreated, OrderStatusPendingPayment) {
+		t.Fatal("shop must not accept-via-created")
+	}
+	if !AllowedAdminTransition(OrderTypeCustom, OrderStatusPendingPayment, OrderStatusPaid) {
+		t.Fatal("custom pending_payment → paid missing")
+	}
+	if !AllowedAdminTransition(OrderTypeCustom, OrderStatusPaid, OrderStatusPacking) {
+		t.Fatal("custom paid → packing missing")
+	}
+}
+
+func TestValidateStatusChangeNote_rejectRequiresReason(t *testing.T) {
+	if err := ValidateStatusChangeNote(OrderTypeCustom, OrderStatusCreated, OrderStatusRejected, ""); err == nil {
+		t.Fatal("reject without reason should fail")
+	}
+	if err := ValidateStatusChangeNote(OrderTypeCustom, OrderStatusCreated, OrderStatusRejected, "out of stock"); err != nil {
+		t.Fatal(err)
+	}
+	if err := ValidateStatusChangeNote(OrderTypeShop, OrderStatusPaid, OrderStatusPacking, ""); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -80,7 +110,7 @@ func TestNormalizeOrder_preservesStoredBreakdown(t *testing.T) {
 	}
 }
 
-func TestNormalizeOrder_preservesCustomLegacy(t *testing.T) {
+func TestNormalizeOrder_preservesCustom(t *testing.T) {
 	o := &Order{OrderType: OrderTypeCustom, Status: OrderStatusCreated}
 	NormalizeOrder(o)
 	if o.OrderType != OrderTypeCustom {
@@ -127,7 +157,7 @@ func TestParseOrderListFilterStatus_allowsNewStatuses(t *testing.T) {
 }
 
 func TestAllowedAdminTransition_pendingToPaidStillAllowed(t *testing.T) {
-	if !AllowedAdminTransition(OrderStatusPendingPayment, OrderStatusPaid) {
+	if !AllowedAdminTransition(OrderTypeShop, OrderStatusPendingPayment, OrderStatusPaid) {
 		t.Fatal("admin should mark pending_payment as paid")
 	}
 }
@@ -158,7 +188,7 @@ func TestMayAbandon(t *testing.T) {
 	}
 	customPending := &Order{OrderType: OrderTypeCustom, Status: OrderStatusPendingPayment}
 	if customPending.MayAbandon() {
-		t.Fatal("legacy custom pending_payment must not allow abandon")
+		t.Fatal("custom pending_payment must not allow abandon")
 	}
 	shopPaid := &Order{OrderType: OrderTypeShop, Status: OrderStatusPaid}
 	if shopPaid.MayAbandon() {
