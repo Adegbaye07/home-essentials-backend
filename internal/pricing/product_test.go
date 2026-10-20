@@ -47,6 +47,21 @@ func TestValidateProductPricing_bathMats(t *testing.T) {
 	}
 }
 
+func TestValidateProductPricing_generalMats(t *testing.T) {
+	err := ValidateProductPricing(model.CategoryGeneralMats, []model.SizePricing{
+		{Size: "1 x 1.5 m", PiecePriceKobo: 350000, BundlePriceKobo: 3000000, PiecesPerBundle: 10},
+	}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	err = ValidateProductPricing(model.CategoryGeneralMats, nil, &model.CleaningPricing{
+		PiecePriceKobo: 1, DozenPriceKobo: 1,
+	})
+	if err == nil {
+		t.Fatal("expected cleaning pricing to be rejected for general mats")
+	}
+}
+
 func TestValidateProductPricing_matsRejectCleaning(t *testing.T) {
 	err := ValidateProductPricing(model.CategoryFootMats, []model.SizePricing{
 		{Size: "60cm", PiecePriceKobo: 1, BundlePriceKobo: 1, PiecesPerBundle: 2},

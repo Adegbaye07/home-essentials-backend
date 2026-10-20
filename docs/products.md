@@ -10,7 +10,7 @@ Base path: `/api/v1/admin/products`
 
 ## Categories
 
-`foot_mats` | `door_mats` | `center_mats` | `bath_mats` | `rugs` | `cleaning_essentials`
+`general_mats` | `foot_mats` | `door_mats` | `center_mats` | `bath_mats` | `rugs` | `cleaning_essentials`
 
 ## Variants
 
@@ -20,7 +20,7 @@ Free-text labels (same idea as the old “colors” field). Each variant needs a
 
 Delivery timeline is **not** a product field. Storefront copy is fixed: *1–3 business days (Mon–Sat)*. Order-level delivery **fee** (₦2,000 for piece-only carts; free with any bundle/dozen) is computed at checkout — see [orders.md](./orders.md).
 
-### Mats / rugs (`foot_mats`, `door_mats`, `center_mats`, `bath_mats`, `rugs`)
+### Mats / rugs (`general_mats`, `foot_mats`, `door_mats`, `center_mats`, `bath_mats`, `rugs`)
 
 `sizePricings` — one row per free-text size:
 

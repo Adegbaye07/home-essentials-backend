@@ -5,6 +5,7 @@ import "fmt"
 type Category string
 
 const (
+	CategoryGeneralMats        Category = "general_mats"
 	CategoryFootMats           Category = "foot_mats"
 	CategoryDoorMats           Category = "door_mats"
 	CategoryCenterMats         Category = "center_mats"
@@ -15,7 +16,7 @@ const (
 
 func (c Category) Valid() bool {
 	switch c {
-	case CategoryFootMats, CategoryDoorMats, CategoryCenterMats, CategoryBathMats, CategoryRugs, CategoryCleaningEssentials:
+	case CategoryGeneralMats, CategoryFootMats, CategoryDoorMats, CategoryCenterMats, CategoryBathMats, CategoryRugs, CategoryCleaningEssentials:
 		return true
 	default:
 		return false
